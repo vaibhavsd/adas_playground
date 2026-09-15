@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ADAS Playground — replay viewer</title>
+<style>
+  :root { --bg:#101318; --panel:#181c24; --line:#262c38; --txt:#dfe5ef; --dim:#8b94a6; --accent:#40d6ec; --row-strong:#fff; }
+  :root[data-theme="light"] { --bg:#f4f6fa; --panel:#ffffff; --line:#d8dde6; --txt:#232733; --dim:#666f80; --accent:#0089a3; --row-strong:#000; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+         font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex;
+           align-items:center; gap:20px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:15px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }
+  .wrap { display:flex; gap:16px; padding:16px 20px; align-items:flex-start; flex-wrap:wrap; }
+  canvas { background:#0b0d11; border:1px solid var(--line); border-radius:6px; }
+  aside { min-width:260px; flex:1; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:6px;
+          padding:12px 14px; margin-bottom:12px; }
+  .card h2 { margin:0 0 8px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); }
+  .row { display:flex; justify-content:space-between; padding:2px 0; }
+  .row b { font-weight:600; color:var(--row-strong); }
+  button { background:var(--panel); color:var(--txt); border:1px solid var(--line);
+           border-radius:5px; padding:6px 12px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  input[type=range] { width:100%; accent-color:var(--accent); }
+  label.file { border:1px dashed var(--line); border-radius:5px; padding:6px 12px; cursor:pointer; }
+  label.file:hover { border-color:var(--accent); color:var(--accent); }
+  input[type=file] { display:none; }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; }
+  .hint { color:var(--dim); font-size:12px; }
+  .crash { color:#ff6b6b; font-weight:700; }
+  #theme-toggle { margin-left:auto; }
+
+  /* ---- terminal readout: a faithful text replica of stdout ------------ */
+  .term { background:#05070a; border:1px solid var(--line); border-radius:6px;
+          padding:14px 18px; font-size:12px; line-height:1.7; color:#dfe5ef;
+          overflow-x:auto; white-space:pre; margin:0 20px 20px; }
+  .term .tttl   { color:#fff; font-weight:700; letter-spacing:.06em; }
+  .term .tnum   { color:#40d6ec; }
+  .term .tlap   { color:#f6d24a; font-weight:700; }
+  .term .tcrash { color:#ff6b6b; font-weight:700; }
+  .term .tdim   { color:#7a8296; }
+  .term .tbar   { color:#50d2ee; }
+  .term .tbar2  { color:#78daa8; }
+  .term .tbar2.low { color:#ff6b6b; }
+  .term .ttrk   { color:#f6d24a; }
+  .term .tplan  { color:#c9a13b; }
+
+  /* ---- analysis: module sections ---------------------------------------- */
+  .analysis { padding:0 20px 30px; }
+  .analysis > .intro { color:var(--dim); font-size:12px; margin-bottom:6px; }
+  .module { margin-bottom:8px; }
+  .module > .modhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+                        margin:0 0 12px; border-top:1px solid var(--line); padding-top:20px; }
+  .module > .modhead .modicon { font-size:17px; }
+  .module > .modhead h1 { margin:0; font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); }
+  .module > .modhead .moddesc { color:var(--dim); font-size:12px; }
+  .chartsRow { display:flex; gap:16px; flex-wrap:wrap; }
+  .chartsRow .card { flex:1 1 320px; min-width:280px; }
+  .card canvas { width:100%; height:150px; display:block; }
+  #detCv { width:100%; height:260px; }
+  .chartLegend { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; }
+  .chartLegend span.sw { width:9px; height:9px; }
+  .chkline { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--dim);
+             cursor:pointer; user-select:none; }
+  .chkline input { accent-color:var(--accent); cursor:pointer; margin:0; }
+  .chkline input:not(:checked) ~ span.sw { opacity:.25; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ADAS Playground</h1>
+  <label class="file">load run.jsonl<input type="file" id="file" accept=".jsonl,.json,.txt"></label>
+  <button id="play">▶ play</button>
+  <button id="prev">◀ step</button>
+  <button id="next">step ▶</button>
+  <span class="hint" id="status">no run loaded</span>
+  <button id="theme-toggle" onclick="toggleTheme()">☀️ light</button>
+</header>
+
+<div class="wrap">
+  <canvas id="cv" width="880" height="620"></canvas>
+  <aside>
+    <div class="card">
+      <h2>frame</h2>
+      <input type="range" id="scrub" min="0" max="0" value="0">
+      <div class="row"><span>time</span><b id="t">—</b></div>
+      <div class="row"><span>speed</span><b id="v">—</b></div>
+      <div class="row"><span>laps</span><b id="laps">—</b></div>
+      <div class="row"><span>plan offset</span><b id="off">—</b></div>
+      <div class="row"><span>plan cost</span><b id="cost">—</b></div>
+      <div class="row"><span>tracks / truth</span><b id="cnt">—</b></div>
+    </div>
+    <div class="card">
+      <h2>legend</h2>
+      <div><span class="sw" style="background:#40d6ec"></span>ego</div>
+      <div><span class="sw" style="background:#e05660"></span>traffic (ground truth)</div>
+      <div><span class="sw" style="background:#f48a28"></span>cone</div>
+      <div><span class="sw" style="background:#74f68c"></span>planned path</div>
+      <div><span class="sw" style="background:#f6d24a"></span>fused track + 3σ ring</div>
+    </div>
+    <div class="card">
+      <h2>how to record</h2>
+      <div class="hint">ADAS_RECORD=run.jsonl ./adas_sim --seconds=60 --seed=42</div>
+      <div class="hint" style="margin-top:8px">Then drop run.jsonl above. Yellow rings are what
+      fusion believes; red cars are the truth. Everything below the track — the terminal readout
+      and five module sections — is computed once from the whole file, not live.</div>
+    </div>
+  </aside>
+</div>
+
+<pre class="term" id="term">no run loaded — the terminal readout appears here once you drop a run.jsonl above</pre>
+
+<div class="analysis">
+  <div class="intro">module analysis — one section per stack component, mirroring
+    include/adas/{sensors,tracker,planner,controller}.hpp. Untick a legend entry to hide that
+    line; the thin vertical line in every chart tracks the current scrub position.</div>
+
+  <!-- ============================================================ SENSORS -->
+  <section class="module" id="sec-sensors">
+    <div class="modhead">
+      <span class="modicon">🛰️</span><h1>Sensors</h1>
+      <span class="moddesc">sensors.hpp — radar / camera / lidar, each simulating its own noise, FOV and dropout</span>
+    </div>
+
+    <div class="card">
+      <h2>raw detections (current frame)</h2>
+      <canvas id="detCv" width="860" height="260"></canvas>
+      <div class="chartLegend">
+        <span><span class="sw" style="background:#e0555f"></span>radar</span>
+        <span><span class="sw" style="background:#5fce7a"></span>camera</span>
+        <span><span class="sw" style="background:#4fa8e8"></span>lidar</span>
+        <span><span class="sw" style="background:#f6d24a"></span>fused track (confirmed)</span>
+      </div>
+      <div class="hint" style="margin-top:6px">Each dot is one raw measurement this fusion cycle,
+      already converted to world frame — before any tracking (sense::to_detection). Compare the
+      scatter to the yellow rings: that gap is what the Kalman filter in tracker.hpp is smoothing over.</div>
+    </div>
+
+    <div class="chartsRow">
+      <div class="card">
+        <h2>detections / cycle, per sensor</h2>
+        <canvas id="chDet" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chDetLegend"></div>
+        <div class="hint" style="margin-top:6px">Radar (20 Hz, 70 m, 10% drop), camera (15 Hz, 45 m,
+        5% drop), lidar (10 Hz, 35 m, no drop but density falls with range) — dips to zero are the
+        dropout logic in Radar::measure / Camera::measure, not a bug.</div>
+      </div>
+      <div class="card">
+        <h2>cumulative (this run)</h2>
+        <div class="row"><span>radar frames captured</span><b id="statRadar">—</b></div>
+        <div class="row"><span>camera frames captured</span><b id="statCamera">—</b></div>
+        <div class="row"><span>lidar frames captured</span><b id="statLidar">—</b></div>
+        <div class="hint" style="margin-top:8px">Each sensor runs its own std::jthread at its own
+        rate (main.cpp) — these counters are conc::Stats::sensor_frames, incremented once per
+        capture() regardless of how many objects were actually seen that cycle.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= FUSION -->
+  <section class="module" id="sec-fusion">
+    <div class="modhead">
+      <span class="modicon">🔀</span><h1>Fusion</h1>
+      <span class="moddesc">main.cpp fusion thread + sensors.hpp to_detection() — merges 3 sensor streams into one detection list</span>
+    </div>
+
+    <div class="chartsRow">
+      <div class="card">
+        <h2>detection volume vs. tracks produced</h2>
+        <canvas id="chFusion" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chFusionLegend"></div>
+        <div class="hint" style="margin-top:6px">"Total detections" is every radar+camera+lidar
+        measurement merged this cycle (main.cpp:150-155); "confirmed tracks" is what
+        Tracker::update() distilled them into. A wide, steady gap between the two lines is fusion
+        doing its job — many noisy readings, few stable beliefs.</div>
+      </div>
+      <div class="card">
+        <h2>cumulative (this run)</h2>
+        <div class="row"><span>fusion cycles run</span><b id="statFusion">—</b></div>
+        <div class="hint" style="margin-top:8px">One cycle = one drain() of the BlockingQueue,
+        event-driven (not fixed-rate) — it wakes whenever any sensor frame arrives, up to every
+        20 ms. Merging itself has no separate "algorithm": to_detection() just normalizes each
+        sensor's raw type into a common Detection struct; tracker.hpp:194 is what actually
+        associates them into tracks.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ TRACKER -->
+  <section class="module" id="sec-tracker">
+    <div class="modhead">
+      <span class="modicon">🎯</span><h1>Tracker</h1>
+      <span class="moddesc">tracker.hpp — per-object Kalman filters, data association, confirm/prune lifecycle</span>
+    </div>
+
+    <div class="chartsRow">
+      <div class="card">
+        <h2>track confidence</h2>
+        <canvas id="chConf" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chConfLegend"></div>
+        <div class="hint" style="margin-top:6px">σ is the Kalman position uncertainty
+        (Track::pos_sigma) — it should trend down as a track accumulates hits. "confirmed tracks"
+        only counts tracks that passed is_confirmed(); tentative tracks never reach this file at
+        all (see docs/tracker-explainer.html § Pipeline).</div>
+      </div>
+      <div class="card">
+        <h2>sensor agreement (confirmed tracks, per cycle)</h2>
+        <canvas id="chAgree" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chAgreeLegend"></div>
+        <div class="hint" style="margin-top:6px">Counts confirmed tracks by how many <em>distinct</em>
+        sensor kinds (popcount of sensor_mask) ever hit them. Since confirm_sensors=2 by default,
+        the "1 sensor kind" line should stay near zero among confirmed tracks — seeing it rise is
+        a sign the confirmation gate isn't doing its job.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ PLANNER -->
+  <section class="module" id="sec-planner">
+    <div class="modhead">
+      <span class="modicon">🧭</span><h1>Planner</h1>
+      <span class="moddesc">planner.hpp — lattice of candidate offsets, scored against predicted obstacle motion</span>
+    </div>
+
+    <div class="chartsRow">
+      <div class="card">
+        <h2>planning stats</h2>
+        <canvas id="chPlan" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chPlanLegend"></div>
+        <div class="hint" style="margin-top:6px">Cost spikes when an obstacle gets close (the
+        w_clearance penalty in build_and_score); target speed should dip in lockstep, since both
+        come from the same min_clearance. Lateral offset shows which of the 5 candidate lanes
+        (−3.5, −2, 0, +2, +3.5 m) actually got chosen each cycle.</div>
+      </div>
+      <div class="card">
+        <h2>cumulative (this run)</h2>
+        <div class="row"><span>plans computed</span><b id="statPlans">—</b></div>
+        <div class="hint" style="margin-top:8px">Runs at a fixed 10 Hz (kPlanPeriod in main.cpp),
+        independent of the fusion rate — each cycle forks 5 std::async tasks, one per candidate
+        offset, and keeps the minimum-cost path.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ CONTROL -->
+  <section class="module" id="sec-control">
+    <div class="modhead">
+      <span class="modicon">🎮</span><h1>Control</h1>
+      <span class="moddesc">controller.hpp — pure pursuit (steering) + PID (speed), turning the plan into a Control command</span>
+    </div>
+
+    <div class="chartsRow">
+      <div class="card">
+        <h2>speed tracking</h2>
+        <canvas id="chSpeed" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chSpeedLegend"></div>
+        <div class="hint" style="margin-top:6px">Ego speed chasing the planner's target speed is
+        the PID loop in controller.hpp doing its job — a widening, sustained gap usually means the
+        gains (kp/ki/kd) or the accel clamp in vehicle.hpp can't keep up.</div>
+      </div>
+      <div class="card">
+        <h2>control effort</h2>
+        <canvas id="chCmd" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chCmdLegend"></div>
+        <div class="hint" style="margin-top:6px">The actual Control{accel, steer} sent to
+        World::step() each cycle. Steer sign flips as pure pursuit tracks the lookahead point
+        around the oval; accel should go negative (braking) right when the planner's target speed
+        chart drops.</div>
+      </div>
+      <div class="card">
+        <h2>cumulative (this run)</h2>
+        <div class="row"><span>control ticks</span><b id="statCtrl">—</b></div>
+        <div class="row"><span>sim ticks</span><b id="statSim">—</b></div>
+        <div class="hint" style="margin-top:8px">Control runs at 50 Hz, the World kinematic
+        integration at 100 Hz (kControlPeriod / kSimPeriod in main.cpp) — sim ticks should always
+        run roughly 2× control ticks.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+// Theme toggle (defaults to the original dark look; light mode is opt-in and persisted).
+(function () {
+  const stored = localStorage.getItem('adas-viewer-theme');
+  if (stored === 'light') document.documentElement.setAttribute('data-theme', 'light');
+})();
+function toggleTheme() {
+  const root = document.documentElement;
+  const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  if (next === 'light') root.setAttribute('data-theme', 'light'); else root.removeAttribute('data-theme');
+  localStorage.setItem('adas-viewer-theme', next);
+  document.getElementById('theme-toggle').textContent = next === 'light' ? '🌙 dark' : '☀️ light';
+}
+document.getElementById('theme-toggle').textContent =
+  document.documentElement.getAttribute('data-theme') === 'light' ? '🌙 dark' : '☀️ light';
+
+// Standalone, no build step, no dependencies. One file, vanilla JS.
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const CARS = ['#e05660','#be76e8','#ee923e','#6cb0f0','#ecd65c','#78daa8'];
+let frames = [], i = 0, playing = false, lastT = 0;
+
+// World is roughly x∈[-48,48], y∈[-32,32]; fit it with a margin.
+const EXT = {x0:-48, x1:48, y0:-34, y1:34};
+const sx = v => (v - EXT.x0) / (EXT.x1 - EXT.x0) * cv.width;
+const sy = v => cv.height - (v - EXT.y0) / (EXT.y1 - EXT.y0) * cv.height;
+const scale = cv.width / (EXT.x1 - EXT.x0);   // pixels per metre
+
+function ovalPts(rx, ry, n) {
+  const p = [];
+  for (let k = 0; k < n; k++) { const t = 2*Math.PI*k/n; p.push([rx*Math.cos(t), ry*Math.sin(t)]); }
+  return p;
+}
+const CENTRE = ovalPts(40, 24, 400), HALF_W = 5;
+
+function strokeOval(offset, style, width, dash) {
+  ctx.beginPath();
+  CENTRE.forEach(([x,y], k) => {
+    const n = Math.hypot(x/1600, y/576) || 1;           // outward normal of the ellipse
+    const nx = (x/1600)/n, ny = (y/576)/n;
+    const px = x + nx*offset, py = y + ny*offset;
+    k ? ctx.lineTo(sx(px), sy(py)) : ctx.moveTo(sx(px), sy(py));
+  });
+  ctx.closePath();
+  ctx.setLineDash(dash || []);
+  ctx.strokeStyle = style; ctx.lineWidth = width; ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawTrack() {
+  ctx.fillStyle = '#16241c'; ctx.fillRect(0,0,cv.width,cv.height);
+  strokeOval(0, '#33363d', HALF_W*2*scale);              // asphalt band
+  strokeOval( HALF_W, '#d8dae0', 2);                      // edges
+  strokeOval(-HALF_W, '#d8dae0', 2);
+  strokeOval(0, '#a68c42', 2, [14, 16]);                  // dashed centreline
+}
+
+function drawCar(x, y, yaw, colour, ego) {
+  const L = 5.2*scale, W = 2.6*scale;
+  ctx.save();
+  ctx.translate(sx(x), sy(y));
+  ctx.rotate(-yaw);                                       // canvas y grows downward
+  ctx.fillStyle = colour;
+  ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(-L/2, -W/2, L, W, 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = ego ? '#e8fcff' : 'rgba(255,255,255,.55)';
+  ctx.fillRect(L/2 - L*0.28, -W/2 + 1, L*0.2, W - 2);     // windscreen / nose
+  if (ego) {                                              // headlight wedge
+    const g = ctx.createLinearGradient(L/2, 0, L/2 + 11*scale, 0);
+    g.addColorStop(0, 'rgba(255,236,170,.35)'); g.addColorStop(1, 'rgba(255,236,170,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(L/2, -W/2);
+    ctx.lineTo(L/2 + 11*scale, -5*scale); ctx.lineTo(L/2 + 11*scale, 5*scale); ctx.lineTo(L/2, W/2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---- sensors section: raw per-sensor detection scatter, current frame ----
+const detCv = document.getElementById('detCv'), dctx = detCv.getContext('2d');
+const SENS_COLOR = ['#e0555f', '#5fce7a', '#4fa8e8'];   // 0=radar 1=camera 2=lidar
+const dsx = v => (v - EXT.x0) / (EXT.x1 - EXT.x0) * detCv.width;
+const dsy = v => detCv.height - (v - EXT.y0) / (EXT.y1 - EXT.y0) * detCv.height;
+
+function drawDetections(f) {
+  dctx.fillStyle = '#0e1015'; dctx.fillRect(0, 0, detCv.width, detCv.height);
+  (f.det || []).forEach(([kind, x, y]) => {
+    dctx.beginPath(); dctx.arc(dsx(x), dsy(y), 2.6, 0, 2*Math.PI);
+    dctx.fillStyle = SENS_COLOR[kind] || '#999'; dctx.fill();
+  });
+  (f.trk || []).forEach(([, x, y]) => {                  // fused tracks, for comparison
+    dctx.beginPath(); dctx.arc(dsx(x), dsy(y), 6, 0, 2*Math.PI);
+    dctx.strokeStyle = 'rgba(246,210,74,.85)'; dctx.lineWidth = 1.5; dctx.stroke();
+  });
+  if (f.ego) {
+    dctx.beginPath(); dctx.arc(dsx(f.ego[0]), dsy(f.ego[1]), 3.5, 0, 2*Math.PI);
+    dctx.fillStyle = '#40d6ec'; dctx.fill();
+  }
+}
+
+// ---- module charts: time-series built once per loaded run ----------------
+let series = null;
+const popcount3 = m => ((m&1)?1:0) + ((m&2)?1:0) + ((m&4)?1:0);
+
+function buildSeries() {
+  const t=[], radar=[], camera=[], lidar=[], totalDet=[],
+        sigma=[], confCount=[], hitsAvg=[], missesAvg=[], mask1=[], mask2=[], mask3=[],
+        cost=[], minclr=[], tspeed=[], off=[], speed=[], cmdAccel=[], cmdSteer=[];
+  frames.forEach(f => {
+    t.push(f.t);
+
+    let r=0, c=0, l=0;
+    (f.det || []).forEach(([kind]) => { if (kind===0) r++; else if (kind===1) c++; else if (kind===2) l++; });
+    radar.push(r); camera.push(c); lidar.push(l); totalDet.push(r+c+l);
+
+    const trk = f.trk || [];
+    confCount.push(trk.length);
+    sigma.push(trk.length ? trk.reduce((a, tr) => a + tr[5], 0) / trk.length : 0);
+    hitsAvg.push(trk.length ? trk.reduce((a, tr) => a + tr[6], 0) / trk.length : 0);
+    missesAvg.push(trk.length ? trk.reduce((a, tr) => a + tr[7], 0) / trk.length : 0);
+    let m1=0, m2=0, m3=0;
+    trk.forEach(tr => { const p = popcount3(tr[8]); if (p===1) m1++; else if (p===2) m2++; else if (p>=3) m3++; });
+    mask1.push(m1); mask2.push(m2); mask3.push(m3);
+
+    cost.push(f.cost || 0);
+    minclr.push(f.minclr != null ? Math.min(f.minclr, 10) : 0);
+    tspeed.push(f.tspeed || 0);
+    off.push(f.off || 0);
+    speed.push(f.speed || 0);
+    cmdAccel.push(f.cmd ? f.cmd[0] : 0);
+    cmdSteer.push(f.cmd ? f.cmd[1] : 0);
+  });
+  series = {t, radar, camera, lidar, totalDet, sigma, confCount, hitsAvg, missesAvg,
+            mask1, mask2, mask3, cost, minclr, tspeed, off, speed, cmdAccel, cmdSteer};
+}
+
+// Tiny dependency-free multi-line chart with a tick/untick legend. Each line
+// auto-scales to its own min/max (or an explicit {min,max}) independently of
+// whatever else is toggled, so hiding a line never rescales the others. A
+// thin vertical line marks the current scrub frame; redrawn every render().
+const charts = [];
+function createChart(canvasId, legendId, lines) {
+  const cv = document.getElementById(canvasId);
+  const legend = document.getElementById(legendId);
+  const state = {};
+  legend.innerHTML = '';
+  lines.forEach(l => {
+    state[l.key] = l.default !== false;
+    const label = document.createElement('label');
+    label.className = 'chkline';
+    label.innerHTML = `<input type="checkbox"${state[l.key] ? ' checked' : ''}>` +
+                       `<span class="sw" style="background:${l.color}"></span>${l.label}`;
+    legend.appendChild(label);
+    label.querySelector('input').addEventListener('change', e => { state[l.key] = e.target.checked; draw(); });
+  });
+  function draw() {
+    const c = cv.getContext('2d');
+    const W = cv.width, H = cv.height, pad = 6;
+    c.fillStyle = '#0e1015'; c.fillRect(0, 0, W, H);
+    if (!series || !series.t.length) return;
+    const n = series.t.length;
+    const xAt = k => pad + k / Math.max(n - 1, 1) * (W - pad*2);
+    lines.forEach(l => {
+      if (!state[l.key]) return;
+      const data = l.getData();
+      const lo = l.min != null ? l.min : Math.min(...data);
+      const hi = l.max != null ? l.max : Math.max(...data);
+      const span = (hi - lo) || 1e-6;
+      c.beginPath();
+      data.forEach((v, k) => {
+        const x = xAt(k), y = H - pad - ((v - lo) / span) * (H - pad*2);
+        k ? c.lineTo(x, y) : c.moveTo(x, y);
+      });
+      c.strokeStyle = l.color; c.lineWidth = 1.4; c.stroke();
+    });
+    const mx = xAt(Math.min(i, n - 1));
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(mx, pad); c.lineTo(mx, H - pad); c.stroke();
+  }
+  charts.push({draw});
+  return {draw};
+}
+
+createChart('chDet', 'chDetLegend', [
+  {key:'radar',  label:'radar / cycle',  color:'#e0555f', getData:()=>series.radar},
+  {key:'camera', label:'camera / cycle', color:'#5fce7a', getData:()=>series.camera},
+  {key:'lidar',  label:'lidar / cycle',  color:'#4fa8e8', getData:()=>series.lidar},
+]);
+createChart('chFusion', 'chFusionLegend', [
+  {key:'total', label:'total detections / cycle', color:'#e8c34a', getData:()=>series.totalDet},
+  {key:'conf',  label:'confirmed tracks',         color:'#40d6ec', getData:()=>series.confCount},
+]);
+createChart('chConf', 'chConfLegend', [
+  {key:'sigma',   label:'avg σ (m)',       color:'#f6d24a', getData:()=>series.sigma},
+  {key:'conf',    label:'confirmed tracks', color:'#40d6ec', getData:()=>series.confCount},
+  {key:'hits',    label:'avg hits',         color:'#78daa8', getData:()=>series.hitsAvg},
+  {key:'misses',  label:'avg misses',       color:'#e0555f', getData:()=>series.missesAvg, default:false},
+]);
+createChart('chAgree', 'chAgreeLegend', [
+  {key:'m1', label:'1 sensor kind',  color:'#e0555f', getData:()=>series.mask1},
+  {key:'m2', label:'2 sensor kinds', color:'#ecd65c', getData:()=>series.mask2},
+  {key:'m3', label:'3 sensor kinds', color:'#78daa8', getData:()=>series.mask3},
+]);
+createChart('chPlan', 'chPlanLegend', [
+  {key:'cost',   label:'cost',                   color:'#74f68c', getData:()=>series.cost},
+  {key:'minclr', label:'min clearance (m)',       color:'#be76e8', getData:()=>series.minclr},
+  {key:'tspeed', label:'target speed (m/s)',      color:'#ee923e', getData:()=>series.tspeed},
+  {key:'off',    label:'lateral offset (m)',      color:'#4fa8e8', getData:()=>series.off, default:false},
+]);
+createChart('chSpeed', 'chSpeedLegend', [
+  {key:'speed',  label:'ego speed (m/s)',    color:'#40d6ec', getData:()=>series.speed},
+  {key:'tspeed', label:'target speed (m/s)', color:'#ee923e', getData:()=>series.tspeed},
+]);
+createChart('chCmd', 'chCmdLegend', [
+  {key:'accel', label:'accel (m/s²)', color:'#74f68c', getData:()=>series.cmdAccel},
+  {key:'steer', label:'steer (rad)',  color:'#be76e8', getData:()=>series.cmdSteer},
+]);
+
+// ---- terminal readout: a text replica of render.hpp's header()/footer() --
+function escapeHtml(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function asciiBar(frac, width) {
+  frac = Math.max(0, Math.min(1, frac));
+  const filled = Math.round(frac * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+function renderTerminal(f) {
+  const term = document.getElementById('term');
+  const clr = f.minclr != null ? f.minclr : 99.9;
+  const st = f.stats || {};
+  const crashTxt = f.crashed
+      ? `<span class="tcrash">*** CRASHED: ${escapeHtml(f.crash_reason)} ***</span>` : '';
+  const lines = [];
+  lines.push(`<span class="tttl">ADAS PLAYGROUND</span>  t=<span class="tnum">${f.t.toFixed(1)}</span>s` +
+             `  left=<span class="tnum">${f.left ?? '—'}</span>s  laps=<span class="tlap">${f.laps}</span>  ${crashTxt}`);
+  lines.push(`  speed <span class="tbar">${asciiBar(f.speed/12, 18)}</span> <b>${f.speed.toFixed(1)}</b> m/s   ` +
+             `clearance <span class="tbar2${clr<1?' low':''}">${asciiBar(Math.min(clr,6)/6, 12)}</span> <b>${clr.toFixed(1)}</b> m`);
+  lines.push(`  <span class="tdim">frames</span> radar=${st.radar ?? '—'} camera=${st.camera ?? '—'} lidar=${st.lidar ?? '—'} ` +
+             `<span class="tdim">|</span> fusion=${st.fusion ?? '—'} plans=${st.plans ?? '—'} ctrl=${st.ctrl ?? '—'} sim=${st.sim ?? '—'}`);
+  lines.push(`  <span class="tplan">${escapeHtml(f.planner)}</span> offset=${(f.off>=0?'+':'')+f.off.toFixed(1)}m ` +
+             `target=${f.tspeed.toFixed(1)} m/s cost=${f.cost.toFixed(1)}  <span class="tdim">|</span> ` +
+             `tracks=${f.trk.length} truth=${f.obs.length}`);
+  let trkLine = '  <span class="tdim">tracks:</span> ';
+  (f.trk || []).forEach(([id,,,vx,vy,sig]) => {
+    trkLine += `<span class="ttrk">[${id} v=${Math.hypot(vx,vy).toFixed(1)} σ=${sig.toFixed(2)}]</span> `;
+  });
+  lines.push(trkLine);
+  lines.push('  <span class="tdim">--- events ---</span>');
+  (f.events && f.events.length ? f.events : ['(none yet)']).forEach(e =>
+    lines.push(`  <span class="tdim">${escapeHtml(e)}</span>`));
+  term.innerHTML = lines.join('\n');
+}
+function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+function render() {
+  const f = frames[i];
+  drawTrack();
+  if (!f) return;
+
+  if (f.path && f.path.length) {                          // planned path
+    ctx.beginPath();
+    f.path.forEach(([x,y], k) => k ? ctx.lineTo(sx(x), sy(y)) : ctx.moveTo(sx(x), sy(y)));
+    ctx.strokeStyle = '#74f68c'; ctx.lineWidth = 2; ctx.stroke();
+    f.path.forEach(([x,y]) => { ctx.fillStyle='#74f68c'; ctx.fillRect(sx(x)-1.5, sy(y)-1.5, 3, 3); });
+  }
+
+  f.trk.forEach(([id,x,y,vx,vy,sig]) => {                 // fusion's belief
+    ctx.beginPath(); ctx.arc(sx(x), sy(y), Math.max(sig*3*scale, 7), 0, 2*Math.PI);
+    ctx.strokeStyle = 'rgba(246,210,74,.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(x), sy(y)); ctx.lineTo(sx(x+vx), sy(y+vy));
+    ctx.strokeStyle = 'rgba(246,210,74,.5)'; ctx.stroke();
+    ctx.fillStyle = 'rgba(246,210,74,.9)'; ctx.font = '10px monospace';
+    ctx.fillText(id, sx(x)+9, sy(y)-8);
+  });
+
+  f.obs.forEach(([id,x,y,vx,vy,r]) => {                   // ground truth
+    if (r < 0.8) {
+      ctx.beginPath(); ctx.arc(sx(x), sy(y), r*scale*1.6, 0, 2*Math.PI);
+      ctx.fillStyle = '#f48a28'; ctx.fill();
+    } else {
+      drawCar(x, y, Math.hypot(vx,vy) > 0.4 ? Math.atan2(vy,vx) : 0, CARS[id % CARS.length], false);
+    }
+  });
+
+  drawCar(f.ego[0], f.ego[1], f.ego[2], '#40d6ec', true);
+
+  if (f.crashed) {
+    ctx.fillStyle = 'rgba(200,40,40,.22)'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle = '#ff6b6b'; ctx.font = 'bold 26px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('CRASH', cv.width/2, cv.height/2); ctx.textAlign = 'left';
+  }
+
+  document.getElementById('t').textContent    = f.t.toFixed(2) + ' s';
+  document.getElementById('v').textContent    = f.speed.toFixed(1) + ' m/s';
+  document.getElementById('laps').textContent = f.laps;
+  document.getElementById('off').textContent  = (f.off >= 0 ? '+' : '') + f.off.toFixed(1) + ' m';
+  document.getElementById('cost').textContent = f.cost.toFixed(1);
+  document.getElementById('cnt').textContent  = f.trk.length + ' / ' + f.obs.length;
+  document.getElementById('scrub').value      = i;
+  document.getElementById('status').innerHTML = f.crashed
+      ? '<span class="crash">crashed</span>' : `frame ${i+1} / ${frames.length}`;
+
+  const st = f.stats || {};
+  setTxt('statRadar', st.radar); setTxt('statCamera', st.camera); setTxt('statLidar', st.lidar);
+  setTxt('statFusion', st.fusion);
+  setTxt('statPlans', st.plans);
+  setTxt('statCtrl', st.ctrl); setTxt('statSim', st.sim);
+
+  drawDetections(f);
+  renderTerminal(f);
+  charts.forEach(c => c.draw());
+}
+
+function loop(ts) {
+  if (playing && frames.length) {
+    if (ts - lastT > 70) { lastT = ts; i = (i + 1) % frames.length; render(); }
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+document.getElementById('file').addEventListener('change', e => {
+  const fr = new FileReader();
+  fr.onload = () => {
+    frames = fr.result.split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    i = 0; document.getElementById('scrub').max = Math.max(frames.length - 1, 0);
+    buildSeries();
+    playing = frames.length > 0; render();
+  };
+  fr.readAsText(e.target.files[0]);
+});
+document.getElementById('play').onclick = () => { playing = !playing;
+  document.getElementById('play').textContent = playing ? '❚❚ pause' : '▶ play'; };
+document.getElementById('next').onclick = () => { playing = false; i = Math.min(i+1, frames.length-1); render(); };
+document.getElementById('prev').onclick = () => { playing = false; i = Math.max(i-1, 0); render(); };
+document.getElementById('scrub').oninput = e => { playing = false; i = +e.target.value; render(); };
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') document.getElementById('next').click();
+  if (e.key === 'ArrowLeft')  document.getElementById('prev').click();
+  if (e.key === ' ') { e.preventDefault(); document.getElementById('play').click(); }
+});
+drawTrack();
+[detCv, 'chDet', 'chFusion', 'chConf', 'chAgree', 'chPlan', 'chSpeed', 'chCmd'].forEach(el => {
+  const c = typeof el === 'string' ? document.getElementById(el) : el;
+  const cx = c.getContext('2d'); cx.fillStyle = '#0e1015'; cx.fillRect(0, 0, c.width, c.height);
+});
+</script>
+</body>
+</html>

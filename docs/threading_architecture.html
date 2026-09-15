@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>ADAS Threading Architecture</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --text: #262b33;
+    --muted: #6b7280;
+    --h1: #1f2937;
+    --h2: #2b3444;
+    --h3: #3d4759;
+    --thread-bg: #f4f6f9;
+    --thread-border: #4b6480;
+    --sensor-bg: #f8f6f1;
+    --sensor-border: #9c7a3c;
+    --fusion-bg: #f2f6f3;
+    --fusion-border: #4d7c5f;
+    --control-bg: #f5f4f8;
+    --control-border: #6b5b8a;
+    --render-bg: #f4f5f8;
+    --render-border: #5a6b8c;
+    --channel-bg: #f8f8f5;
+    --channel-border: #9a9470;
+    --diagram-bg: #fbfbfc;
+    --diagram-border: #dde1e7;
+    --code-bg: #eef0f3;
+    --rate: #35516f;
+    --lock-icon: #9a4a42;
+    --th-bg: #2b3444;
+    --th-text: #f2f4f7;
+    --row-alt: #f7f8fa;
+    --table-border: #e0e3e9;
+    --main-thread-bg: #f7f2f1;
+    --main-thread-border: #8a4a42;
+    --arrow: #4b6480;
+    --pre-bg: #eef0f3;
+    --toggle-bg: #ffffff;
+    --toggle-border: #c7ccd4;
+    --shadow: 0 1px 2px rgba(20, 24, 32, 0.04), 0 1px 8px rgba(20, 24, 32, 0.04);
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171c;
+    --surface: #1a1d23;
+    --text: #d6dbe3;
+    --muted: #8b93a3;
+    --h1: #e8eaee;
+    --h2: #d3d8e0;
+    --h3: #b7bfcc;
+    --thread-bg: #1b1e25;
+    --thread-border: #6b85a3;
+    --sensor-bg: #201d17;
+    --sensor-border: #b8955c;
+    --fusion-bg: #171e19;
+    --fusion-border: #6a9d80;
+    --control-bg: #1c1a21;
+    --control-border: #9484b8;
+    --render-bg: #191b21;
+    --render-border: #7f93b8;
+    --channel-bg: #1c1c18;
+    --channel-border: #b3ac82;
+    --diagram-bg: #1b1e24;
+    --diagram-border: #30343d;
+    --code-bg: #262b33;
+    --rate: #8fb0d1;
+    --lock-icon: #c98b83;
+    --th-bg: #262c38;
+    --th-text: #eef1f6;
+    --row-alt: #1b1e24;
+    --table-border: #30343d;
+    --main-thread-bg: #241a19;
+    --main-thread-border: #b3766c;
+    --arrow: #8fa8c2;
+    --pre-bg: #1e222a;
+    --toggle-bg: #1b1e24;
+    --toggle-border: #3a3f4a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
+    padding: 48px;
+    max-width: 980px;
+    margin: 0 auto;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+    font-size: 15px;
+  }
+  code, pre, .diagram {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, 'Courier New', monospace;
+  }
+  h1 {
+    color: var(--h1);
+    margin-bottom: 6px;
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    color: var(--h2);
+    margin: 40px 0 16px 0;
+    border-bottom: 1px solid var(--table-border);
+    padding-bottom: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    color: var(--h3);
+    margin: 18px 0 10px 0;
+    font-size: 14px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  p { color: var(--text); }
+
+  .thread-box {
+    background: var(--thread-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--thread-border);
+    padding: 18px 20px;
+    margin: 12px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+  .thread-box.sensor { border-left-color: var(--sensor-border); background: var(--sensor-bg); }
+  .thread-box.fusion { border-left-color: var(--fusion-border); background: var(--fusion-bg); }
+  .thread-box.control { border-left-color: var(--control-border); background: var(--control-bg); }
+  .thread-box.render { border-left-color: var(--render-border); background: var(--render-bg); }
+
+  .channel-box {
+    background: var(--channel-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px dashed var(--channel-border);
+    padding: 16px 20px;
+    margin: 12px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+  .channel-box > strong { font-size: 14px; letter-spacing: 0.01em; }
+
+  .diagram {
+    background: var(--diagram-bg);
+    border: 1px solid var(--diagram-border);
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  code {
+    background: var(--code-bg);
+    color: var(--text);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.9em;
+  }
+
+  .rate { color: var(--rate); font-weight: 600; }
+  .lock-icon { color: var(--lock-icon); font-weight: 600; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    border: 1px solid var(--table-border);
+    padding: 10px 14px;
+    text-align: left;
+  }
+  th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-size: 12px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  tr:nth-child(even) { background: var(--row-alt); }
+
+  .main-thread {
+    background: var(--main-thread-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--main-thread-border);
+    padding: 18px 20px;
+    margin: 20px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+
+  .arrow {
+    color: var(--arrow);
+    font-weight: 600;
+    margin: 0 5px;
+  }
+
+  pre {
+    background: var(--pre-bg);
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+
+  #theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--toggle-bg);
+    color: var(--muted);
+    border: 1px solid var(--toggle-border);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+    transition: opacity 0.15s ease;
+  }
+  #theme-toggle:hover { opacity: 0.75; }
+</style>
+</head>
+<body>
+
+<button id="theme-toggle" onclick="toggleTheme()">🌙 Dark mode</button>
+<script>
+  (function () {
+    const stored = localStorage.getItem('adas-docs-theme');
+    const theme = stored || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+  function toggleTheme() {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('adas-docs-theme', next);
+    document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('theme-toggle').textContent =
+      document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+  });
+</script>
+
+<h1>🧵 ADAS Threading Architecture</h1>
+<p><strong>Total:</strong> 9 threads (8 workers + 1 main) • <strong>Synchronization:</strong> 4 communication channels • <strong>Pattern:</strong> Producer-consumer with lock-free checks</p>
+
+<h2>📊 System Diagram</h2>
+<div class="diagram">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│                          WORLD (ground truth)                       │
+│              ✓ Only ONE thread writes (sim thread)                  │
+│              ✓ Many threads read (snapshot is a copy)               │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ↓               ↓               ↓
+           ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+           │   RADAR     │  │   CAMERA    │  │   LIDAR     │
+           │  (20 Hz)    │  │  (15 Hz)    │  │  (10 Hz)    │
+           │ 3 threads   │  │             │  │             │
+           └─────────────┘  └─────────────┘  └─────────────┘
+                    │               │               │
+                    └───────────────┼───────────────┘
+                                    ↓
+                    ┌───────────────────────────────┐
+                    │   BlockingQueue&lt;SensorFrame&gt;  │
+                    │  (mutex + condition_variable) │
+                    │   ✓ Many producers            │
+                    │   ✓ One consumer (fusion)     │
+                    └───────────────────────────────┘
+                                    ↓
+                    ┌───────────────────────────────┐
+                    │  FUSION TRACKER (event-driven)│
+                    │  - Kalman predict/update      │
+                    │  - Data association           │
+                    │  - Publishes FusedPicture     │
+                    └───────────────────────────────┘
+                                    ↓
+                    ┌───────────────────────────────┐
+                    │  Latest&lt;FusedPicture&gt;         │
+                    │  (shared_mutex + atomic ver)  │
+                    │  ✓ One writer (fusion)        │
+                    │  ✓ Many readers (plan, ctrl)  │
+                    └───────────────────────────────┘
+                    ↙                           ↘
+        ┌──────────────────┐           ┌──────────────────┐
+        │  PLANNER (10 Hz) │           │CONTROLLER (50 Hz)│
+        │ Reads: FusedPic  │           │ Reads: FusedPic  │
+        │ Reads: Path      │           │        Path      │
+        │ Writes: Path     │           │ Writes: Control  │
+        └──────────────────┘           └──────────────────┘
+                    ↓                           ↓
+        ┌─────────────────────────────────────────────┐
+        │  Shared&lt;Path&gt;  |  Shared&lt;Control&gt;          │
+        │  (mutex)       |  (mutex)                   │
+        └─────────────────────────────────────────────┘
+                    ↑                           ↑
+        ┌──────────────────┐           ┌──────────────────┐
+        │   From Planner   │           │  From Controller │
+        │   (10 Hz write)  │           │  (50 Hz write)   │
+        └──────────────────┘           └──────────────────┘
+
+        ┌──────────────────────────────────────────────┐
+        │  RENDERER (12 Hz, read-only)                │
+        │  ✓ Reads: World, FusedPicture, Path, Stats  │
+        │  ✓ Writes: stdout (no locks needed)         │
+        └──────────────────────────────────────────────┘
+</pre>
+</div>
+
+<h2>🔴 Thread #1: SIMULATION (100 Hz)</h2>
+<div class="thread-box">
+  <h3>Role: THE WORLD</h3>
+  <p><strong>Rate:</strong> <span class="rate">100 Hz</span> (10 ms per tick)</p>
+  <p><strong>What it does:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li>✓ Reads control commands from <code>Shared&lt;Control&gt;</code></li>
+    <li>✓ Updates ego vehicle kinematics</li>
+    <li>✓ Updates traffic vehicles with toy ACC</li>
+    <li>✓ Detects crashes</li>
+    <li>✓ Counts laps</li>
+    <li><strong>Owns:</strong> The only writer to <code>World</code> state</li>
+  </ul>
+  <p><strong>Lock acquired:</strong> <code>std::unique_lock</code> on <code>world.mtx_</code> when calling <code>step()</code></p>
+  <p><strong>Other threads see:</strong> Snapshots (copies), not live state</p>
+</div>
+
+<h2>🟠 Threads #2-4: SENSORS (Multiple Rates)</h2>
+<div class="thread-box sensor">
+  <h3>Role: PERCEPTION</h3>
+  <table>
+    <tr>
+      <th>Sensor</th>
+      <th>Rate</th>
+      <th>Reading</th>
+      <th>Output</th>
+    </tr>
+    <tr>
+      <td>Radar</td>
+      <td><span class="rate">20 Hz</span> (50 ms)</td>
+      <td>Range, bearing, Doppler</td>
+      <td>RadarReturn</td>
+    </tr>
+    <tr>
+      <td>Camera</td>
+      <td><span class="rate">15 Hz</span> (67 ms)</td>
+      <td>Bearing, est. range</td>
+      <td>CameraBox</td>
+    </tr>
+    <tr>
+      <td>Lidar</td>
+      <td><span class="rate">10 Hz</span> (100 ms)</td>
+      <td>2D point cloud</td>
+      <td>LidarCluster</td>
+    </tr>
+  </table>
+  <p><strong>What they do:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li>✓ Call <code>world.snapshot()</code> (lock-free read, only physics copy)</li>
+    <li>✓ Simulate sensor physics + noise</li>
+    <li>✓ Push measurements to <code>BlockingQueue&lt;SensorFrame&gt;</code></li>
+  </ul>
+  <p><strong>Synchronization:</strong> <code>std::shared_lock</code> when reading world snapshot</p>
+</div>
+
+<h2>🟢 Thread #5: FUSION (Event-Driven)</h2>
+<div class="thread-box fusion">
+  <h3>Role: MULTI-SENSOR FUSION</h3>
+  <p><strong>Rate:</strong> <span class="rate">Event-driven</span> (wakes when detections arrive)</p>
+  <p><strong>Algorithm:</strong></p>
+  <ol style="margin-left: 20px; margin-top: 10px;">
+    <li>Wait on <code>queue.drain(20ms)</code> → blocks until sensor frames arrive OR timeout</li>
+    <li>Call <code>tracker.predict_to(now)</code> → Kalman predict step</li>
+    <li>Convert raw measurements → world-frame <code>Detection</code>s</li>
+    <li>Call <code>tracker.update(detections)</code> → Kalman update step + data association</li>
+    <li>Publish <code>FusedPicture</code> to <code>Latest&lt;FusedPicture&gt;</code></li>
+  </ol>
+  <p><strong>Locks:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li><span class="lock-icon">🔒</span> Acquires <code>BlockingQueue</code> lock when draining</li>
+    <li><span class="lock-icon">🔒</span> Acquires <code>Latest&lt;&gt;</code> lock when publishing</li>
+  </ul>
+</div>
+
+<h2>🔵 Thread #6: PLANNER (10 Hz)</h2>
+<div class="thread-box control">
+  <h3>Role: PATH PLANNING</h3>
+  <p><strong>Rate:</strong> <span class="rate">10 Hz</span> (100 ms)</p>
+  <p><strong>What it does:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li>✓ <strong>Lock-free check:</strong> <code>if (picture.version() == 0) return;</code> (wait for first fusion)</li>
+    <li>✓ Read <code>Latest&lt;FusedPicture&gt;</code></li>
+    <li>✓ Run lattice planner: generate 5 candidate paths, score vs predicted obstacles</li>
+    <li>✓ Write lowest-cost path to <code>Shared&lt;Path&gt;</code></li>
+  </ul>
+  <p><strong>Locks:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li><span class="lock-icon">🔒</span> <code>shared_lock</code> when reading <code>Latest&lt;&gt;</code></li>
+    <li><span class="lock-icon">🔒</span> <code>scoped_lock</code> when writing <code>Shared&lt;Path&gt;</code></li>
+  </ul>
+</div>
+
+<h2>🟣 Thread #7: CONTROLLER (50 Hz)</h2>
+<div class="thread-box control">
+  <h3>Role: VEHICLE CONTROL</h3>
+  <p><strong>Rate:</strong> <span class="rate">50 Hz</span> (20 ms)</p>
+  <p><strong>What it does:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li>✓ <strong>Lock-free check:</strong> <code>if (picture.version() == 0) return;</code></li>
+    <li>✓ Read <code>Latest&lt;FusedPicture&gt;</code> (ego pose, speed)</li>
+    <li>✓ Read <code>Shared&lt;Path&gt;</code> (waypoints, target speed)</li>
+    <li>✓ Run pure pursuit (steering) + PID (speed)</li>
+    <li>✓ Write <code>Control</code> (accel, steer) to <code>Shared&lt;Control&gt;</code></li>
+  </ul>
+  <p><strong>Locks:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li><span class="lock-icon">🔒</span> <code>shared_lock</code> when reading <code>Latest&lt;&gt;</code></li>
+    <li><span class="lock-icon">🔒</span> <code>scoped_lock</code> when reading/writing <code>Shared&lt;&gt;</code></li>
+  </ul>
+</div>
+
+<h2>🟡 Thread #8: RENDERER (12 Hz)</h2>
+<div class="thread-box render">
+  <h3>Role: VISUALIZATION (read-only)</h3>
+  <p><strong>Rate:</strong> <span class="rate">12 Hz</span> (83 ms)</p>
+  <p><strong>What it does:</strong></p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li>✓ Read everything (World snapshot, FusedPicture, Path, Stats)</li>
+    <li>✓ Draw to terminal via ANSI escape codes</li>
+    <li>✓ (Optional) Record JSON to file</li>
+    <li>✓ <strong>Never writes to shared state</strong></li>
+  </ul>
+  <p><strong>Locks:</strong> Acquires locks for reading, but <strong>no contention</strong> since never writes</p>
+</div>
+
+<h2>⚪ Main Thread: REFEREE</h2>
+<div class="main-thread">
+  <h3>What it does:</h3>
+  <ul style="margin-left: 20px;">
+    <li>✓ Spawns 8 worker threads using <code>std::jthread</code></li>
+    <li>✓ Waits on <code>std::latch start_gate{8}</code> → ensures all threads ready before any runs</li>
+    <li>✓ Sleeps in a loop, checking: interrupted (Ctrl+C)? crashed? deadline reached?</li>
+    <li>✓ Calls <code>t.request_stop()</code> on each thread (cooperative shutdown)</li>
+    <li>✓ Waits for threads to join (automatic via <code>jthread</code> destructor)</li>
+    <li>✓ Prints summary stats</li>
+  </ul>
+</div>
+
+<h2>🔐 Communication Channels Summary</h2>
+
+<div class="channel-box">
+  <strong>1. BlockingQueue&lt;SensorFrame&gt;</strong>
+  <p>Pattern: Many producers → One consumer</p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li><span class="lock-icon">🔒 Mutex</span> + std::condition_variable</li>
+    <li><strong>Producers:</strong> Radar (20 Hz), Camera (15 Hz), Lidar (10 Hz)</li>
+    <li><strong>Consumer:</strong> Fusion thread</li>
+    <li><strong>Synchronization:</strong> CV notify_one() wakes fusion when frames arrive</li>
+  </ul>
+</div>
+
+<div class="channel-box">
+  <strong>2. Latest&lt;FusedPicture&gt;</strong>
+  <p>Pattern: One writer → Many readers</p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li><span class="lock-icon">🔒 Shared mutex</span> + atomic version counter</li>
+    <li><strong>Writer:</strong> Fusion thread</li>
+    <li><strong>Readers:</strong> Planner (10 Hz), Controller (50 Hz), Renderer (12 Hz)</li>
+    <li><strong>Optimization:</strong> Lock-free <code>version()</code> check avoids readers waking before data exists</li>
+  </ul>
+</div>
+
+<div class="channel-box">
+  <strong>3. Shared&lt;Path&gt;</strong>
+  <p>Pattern: One writer → One reader</p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li><span class="lock-icon">🔒 Mutex</span> (simple box)</li>
+    <li><strong>Writer:</strong> Planner (10 Hz)</li>
+    <li><strong>Reader:</strong> Controller (50 Hz)</li>
+    <li><strong>Use case:</strong> Planner runs slower; controller reads latest plan repeatedly</li>
+  </ul>
+</div>
+
+<div class="channel-box">
+  <strong>4. Shared&lt;Control&gt;</strong>
+  <p>Pattern: One writer → One reader</p>
+  <ul style="margin-left: 20px; margin-top: 10px;">
+    <li><span class="lock-icon">🔒 Mutex</span></li>
+    <li><strong>Writer:</strong> Controller (50 Hz)</li>
+    <li><strong>Reader:</strong> World/Sim (100 Hz)</li>
+    <li><strong>Use case:</strong> Sim reads latest control command every tick</li>
+  </ul>
+</div>
+
+<h2>⚡ Lock-Free Optimization: Version Counter</h2>
+<pre>
+// In Latest&lt;T&gt;
+std::atomic&lt;std::uint64_t&gt; version_;
+
+// Planner/Controller before accessing picture:
+if (picture.version() == 0) return;  // ← No lock!
+
+// This is atomic with memory_order_acquire, so:
+// ✓ Super fast (single CPU instruction)
+// ✓ No mutex contention
+// ✓ Safe: memory_order_acquire guarantees we see the published data
+// ✓ Use case: avoid processing before first fusion cycle
+</pre>
+
+<h2>📋 Thread Safety Rules</h2>
+
+<table>
+  <tr>
+    <th>Data</th>
+    <th>Writers</th>
+    <th>Readers</th>
+    <th>Synchronization</th>
+  </tr>
+  <tr>
+    <td><code>World</code></td>
+    <td>1 (sim)</td>
+    <td>7 (via snapshot)</td>
+    <td><code>shared_mutex</code><br>(copy breaks aliasing)</td>
+  </tr>
+  <tr>
+    <td><code>BlockingQueue</code></td>
+    <td>3 (sensors)</td>
+    <td>1 (fusion)</td>
+    <td><code>mutex</code> + CV</td>
+  </tr>
+  <tr>
+    <td><code>Latest&lt;FusedPicture&gt;</code></td>
+    <td>1 (fusion)</td>
+    <td>3 (plan, ctrl, render)</td>
+    <td><code>shared_mutex</code><br>+ atomic version</td>
+  </tr>
+  <tr>
+    <td><code>Shared&lt;Path&gt;</code></td>
+    <td>1 (planner)</td>
+    <td>1 (controller)</td>
+    <td><code>mutex</code></td>
+  </tr>
+  <tr>
+    <td><code>Shared&lt;Control&gt;</code></td>
+    <td>1 (controller)</td>
+    <td>1 (sim)</td>
+    <td><code>mutex</code></td>
+  </tr>
+</table>
+
+<h2>🎯 Key Insights</h2>
+
+<ul style="font-size: 15px; line-height: 2;">
+  <li><strong>No mutual blocking:</strong> Each thread runs at its own rate. If planner (10 Hz) is slow, controller (50 Hz) just reads stale Path—no deadlock.</li>
+  <li><strong>Snapshot = thread safety:</strong> World::snapshot() returns a copy, so readers never race the writer.</li>
+  <li><strong>Lock-free handshakes:</strong> <code>picture.version()</code> and <code>game_over.load()</code> are atomic—zero-contention checks.</li>
+  <li><strong>Cooperative shutdown:</strong> <code>std::jthread + std::stop_token</code> allows clean stopping without forceful termination.</li>
+  <li><strong>std::latch synchronization:</strong> <code>start_gate</code> ensures all threads are ready before any runs—avoids early-startup races.</li>
+</ul>
+
+</body>
+</html>

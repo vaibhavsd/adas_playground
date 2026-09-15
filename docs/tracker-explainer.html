@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>tracker.hpp — Explainer</title>
+<script>
+  MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root {
+    --bg: #1e1f26;
+    --bg-card: #262832;
+    --border: #383a46;
+    --text: #e6e6ea;
+    --text-dim: #9a9caa;
+    --accent: #6fb3ff;
+    --accent2: #4fae7a;
+    --code-bg: #12131a;
+    --select: #3a5f8a;
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f7f9;
+    --bg-card: #ffffff;
+    --border: #dcdde3;
+    --text: #22232a;
+    --text-dim: #6b6d78;
+    --accent: #1c6fd6;
+    --accent2: #1c8a52;
+    --code-bg: #edeef2;
+    --select: #cfe3fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    padding: 2.2rem 2rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  header h1 {
+    margin: 0 0 0.3rem;
+    font-size: 1.6rem;
+    letter-spacing: 0.02em;
+  }
+  header p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  #theme-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #theme-toggle:hover { border-color: var(--accent); }
+  #theme-toggle .icon { font-size: 1rem; line-height: 1; }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  nav a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  nav a:hover { background: var(--bg-card); }
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 4rem;
+  }
+  section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 4.5rem;
+  }
+  section > h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.2rem;
+    color: var(--accent);
+  }
+  section > .file-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    display: block;
+  }
+  section > .intro {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-bottom: 1.2rem;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    margin-bottom: 1.1rem;
+  }
+  .card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .card .desc {
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    margin-bottom: 0.7rem;
+  }
+  .card .eq {
+    overflow-x: auto;
+    padding: 0.3rem 0;
+  }
+  code, .inline-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--code-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--accent2);
+  }
+  .where {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .example {
+    margin-top: 1.2rem;
+    padding: 1.3rem 1.4rem;
+    border-top: 1px dashed var(--border);
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .example + .example { margin-top: 1.4rem; }
+  .example h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .example p {
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+  }
+  pre.block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--accent2);
+    margin: 0.8rem 0;
+    line-height: 1.6;
+  }
+  table.datatable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.85rem;
+  }
+  table.datatable th, table.datatable td {
+    text-align: right;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  table.datatable th:first-child, table.datatable td:first-child { text-align: left; }
+  table.datatable th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  table.datatable td { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+  .note {
+    border-left: 3px solid var(--accent);
+    padding: 0.15rem 0 0.15rem 0.9rem;
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+  .result-box {
+    display: inline-block;
+    border: 1px solid var(--text);
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+  }
+  .steps { margin: 0.6rem 0 0.6rem 1.2rem; padding: 0; color: var(--text-dim); font-size: 0.9rem; }
+  .steps li { margin-bottom: 0.35rem; }
+  .steps strong { color: var(--text); }
+  .lifecycle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    margin: 0.8rem 0;
+  }
+  .lifecycle .state {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    font-size: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .lifecycle .arrow { color: var(--text-dim); font-size: 0.9rem; }
+  .lifecycle .tentative { border-color: #c9a13b; color: #c9a13b; }
+  .lifecycle .confirmed { border-color: var(--accent2); color: var(--accent2); }
+  .lifecycle .dead { border-color: #d16565; color: #d16565; }
+  ::selection { background: var(--select); }
+  @media (max-width: 600px) {
+    header, nav, main { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>tracker.hpp — Explainer</h1>
+    <p>Walkthrough of <code>adas::fuse</code> — how noisy sensor detections become stable, ID-tracked objects.</p>
+  </div>
+  <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme">
+    <span class="icon" id="theme-icon">🌙</span>
+    <span id="theme-label">Dark</span>
+  </button>
+</header>
+
+<script>
+  (function () {
+    const root = document.documentElement;
+    const saved = (() => {
+      try { return localStorage.getItem('adas-tracker-theme'); } catch (e) { return null; }
+    })();
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = saved || (systemDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', initial);
+
+    window.toggleTheme = function () {
+      const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('adas-tracker-theme', next); } catch (e) {}
+      updateButton(next);
+    };
+
+    function updateButton(theme) {
+      const icon = document.getElementById('theme-icon');
+      const label = document.getElementById('theme-label');
+      if (!icon || !label) return;
+      if (theme === 'dark') { icon.textContent = '🌙'; label.textContent = 'Dark'; }
+      else                  { icon.textContent = '☀️'; label.textContent = 'Light'; }
+    }
+    document.addEventListener('DOMContentLoaded', () => updateButton(initial));
+  })();
+</script>
+
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#pipeline">Pipeline &amp; storage</a>
+  <a href="#kalman-predict">Kalman: predict</a>
+  <a href="#kalman-update">Kalman: update</a>
+  <a href="#track">Track</a>
+  <a href="#fused-picture">FusedPicture</a>
+  <a href="#predict-to">Tracker::predict_to</a>
+  <a href="#association">Data association</a>
+  <a href="#confirmation">Confirmation logic</a>
+  <a href="#spawn-prune">spawn / prune</a>
+</nav>
+
+<main>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <span class="file-tag">Day 6 — tracker.hpp — "Objects have memory."</span>
+  <div class="card">
+    <h3>What this file does</h3>
+    <div class="desc">
+      Sensors give noisy, single-frame snapshots (a detection is a rumour). The tracker turns a
+      stream of these into a stable list of IDs with position <em>and</em> velocity (a track is a belief),
+      by:
+    </div>
+    <ol class="steps">
+      <li><strong>Estimating</strong> position and velocity per object with a hand-written Kalman filter.</li>
+      <li><strong>Matching</strong> new detections to existing tracks (nearest-neighbour data association with gating).</li>
+      <li><strong>Managing identity</strong> over time — a track is <code>tentative</code> until enough evidence confirms it, and is dropped after too many misses.</li>
+    </ol>
+    <div class="desc">
+      Multi-sensor fusion angle: radar gives Doppler velocity, camera/lidar don't. Radar seeds a
+      track's velocity estimate; all three sensor types then refine position. A track needs hits
+      from <strong>2+ distinct sensor kinds</strong> before it's trusted — this is what kills false
+      positives from a single camera shadow or lidar reflection.
+    </div>
+    <div class="where">include/adas/tracker.hpp — namespace adas::fuse</div>
+  </div>
+</section>
+
+<section id="pipeline">
+  <h2>Pipeline, storage &amp; multi-sensor merge</h2>
+  <span class="file-tag">The part that spans tracker.hpp <em>and</em> src/main.cpp — where detections actually come from</span>
+  <div class="card">
+    <div class="desc">
+      <code>tracker.hpp</code> only defines the <em>tracker</em>; the loop that feeds it detections
+      from three different sensor threads lives in <code>src/main.cpp</code>'s fusion thread. You
+      need both files to answer "how does fusion actually work" — here's the full path.
+    </div>
+    <pre class="block">radar thread  ──┐
+camera thread ──┼──► BlockingQueue&lt;SensorFrame&gt; ──► fusion thread
+lidar thread  ──┘                                         │
+                                                            │ drain(20ms)
+                                                            ▼
+                                   for each frame: to_detection(measurement, frame)
+                                                            │
+                                                            ▼
+                                       std::vector&lt;Detection&gt; dets   (radar + camera + lidar, interleaved)
+                                                            │
+                                                            ▼
+                                              tracker.update(dets)
+                                                            │
+                                                            ▼
+                                std::unordered_map&lt;int, Track&gt; tracks_   (inside Tracker)
+                                                            │
+                                                            ▼
+                                    tracker.confirmed()  ──►  FusedPicture  ──► planner / controller</pre>
+    <div class="where">src/main.cpp:140-163 (fusion thread), sensors.hpp:242 (to_detection), tracker.hpp:194 (update)</div>
+  </div>
+
+  <div class="card">
+    <h3>Where are tracks stored?</h3>
+    <div class="desc">
+      In a single private member of <code>Tracker</code> — there is <strong>one</strong> map, not
+      one per sensor:
+    </div>
+    <pre class="block">std::unordered_map&lt;int, Track&gt; tracks_;
+int                             next_id_{1};</pre>
+    <div class="desc">
+      Every track gets a fresh <code>id</code> from <code>next_id_++</code> when it's spawned, and
+      the map lives for the lifetime of the <code>Tracker</code> object — one <code>Tracker</code>
+      per whole simulation run (constructed once in <code>main()</code>, line 99).
+    </div>
+    <div class="where">tracker.hpp:274-277 (private members of Tracker)</div>
+  </div>
+
+  <div class="card">
+    <h3>How many tracks get created?</h3>
+    <div class="desc">
+      There's no fixed count and no "one track per real object" guarantee by construction — it
+      falls out of the association loop, one decision per <em>detection</em>:
+    </div>
+    <ol class="steps">
+      <li>Every detection in <code>dets</code> either <strong>updates</strong> the single nearest existing track (if within gate) <strong>or</strong> <strong>spawns exactly one new track</strong> — never both, never zero.</li>
+      <li>In steady state, a real object that all three sensors can see keeps exactly <strong>one</strong> track alive, because each new detection lands close enough to the existing track's (Kalman-smoothed) position to fall inside the gate — so it updates rather than spawns.</li>
+      <li>A track only survives long enough to matter if it keeps getting hit; a one-off false detection spawns a track that racks up misses and gets pruned (<code>misses &gt; max_misses</code>) before ever being <em>confirmed</em>, let alone published.</li>
+    </ol>
+    <div class="note">
+      In short: the number of live tracks in <code>tracks_</code> is bounded by "distinct
+      detections that were too far from every existing track to associate" — it self-regulates
+      toward roughly one track per real, persistently-detected object, but nothing in the code
+      <em>enforces</em> that count directly.
+    </div>
+    <div class="where">tracker.hpp:194-230 (Tracker::update)</div>
+  </div>
+
+  <div class="card">
+    <h3>How is a track affected by "the other sensors"?</h3>
+    <div class="desc">
+      There's no per-sensor track state — a <code>Track</code> doesn't know or care which sensor
+      last touched it beyond the <code>sensor_mask</code> bit. Every detection, regardless of
+      origin, competes for the same nearest-track search and (if it gates) updates the
+      <em>same</em> two Kalman1D filters (x and y). Concretely, per detection:
+    </div>
+    <table class="datatable">
+      <thead><tr><th>Sensor</th><th>Always does</th><th>Sometimes does</th></tr></thead>
+      <tbody>
+        <tr><td>Radar</td><td>update_position(pos, r=σ²)</td><td>update_velocity(vel, radar_vel_var) — only if <code>use_doppler_updates=true</code> (default: false)</td></tr>
+        <tr><td>Camera</td><td>update_position(pos, r=σ²)</td><td>— (no velocity signal at all)</td></tr>
+        <tr><td>Lidar</td><td>update_position(pos, r=σ²)</td><td>— (no velocity signal at all)</td></tr>
+      </tbody>
+    </table>
+    <div class="desc">
+      So a track's velocity estimate mostly comes from the Kalman filter's own position/velocity
+      <em>covariance coupling</em> (position measurements alone let velocity drift toward
+      consistency with observed motion — see the worked example above), seeded initially by
+      radar's Doppler if radar detected it first (<code>spawn()</code>, below). Each sensor also
+      contributes its own measurement noise <code>r = d.sigma²</code> — a confident lidar hit
+      pulls the estimate harder than a fuzzy camera guess (<code>sigma</code> values come from
+      <code>to_detection()</code> in sensors.hpp: lidar 0.3, radar 0.8, camera up to
+      <code>0.15 × range</code>).
+    </div>
+    <div class="where">tracker.hpp:205-218 (Tracker::update, the gated branch)</div>
+  </div>
+
+  <div class="card">
+    <h3>Where is spawning vs. merging logic?</h3>
+    <div class="desc"><strong>Spawning</strong> — a brand-new track from one unmatched detection:</div>
+    <pre class="block">else {
+    spawn(d);      // tracker.hpp:228, spawn() defined at tracker.hpp:261
+}</pre>
+    <div class="desc">
+      <strong>"Merging" two sensors' worth of evidence into one track</strong> happens implicitly,
+      inside the gated branch of the <em>same</em> loop — it's not a separate step, it's just "the
+      detection updated an existing track instead of spawning a new one":
+    </div>
+    <pre class="block">if (best != tracks_.end() && geo::distance(...) < gate) {
+    Track&amp; t = best->second;
+    t.x.update_position(...);   // <- this *is* the fusion: radar's, camera's, and
+    t.y.update_position(...);   //    lidar's detections all update the same t
+    ...
+}</pre>
+    <div class="note">
+      <strong>Gap worth knowing about:</strong> there is <em>no</em> function anywhere that merges
+      two <em>already-separate</em> <code>Track</code> objects that turn out to represent the same
+      real obstacle. If two tracks ever spawn slightly apart (e.g. two sensors' first detections
+      of a new object landing just outside each other's gate before either track existed), they
+      stay as two independent tracks forever — nothing in <code>Tracker</code> will notice and
+      combine them later. In practice this rarely happens because the default gate
+      (<code>gate_m + 2σ</code>, typically 4–8 m) is generous relative to sensor noise, but it's a
+      real limitation of this implementation, not a design choice documented anywhere in the code.
+    </div>
+    <div class="where">tracker.hpp:205 (associate/update) vs. tracker.hpp:227-229 (spawn) vs. tracker.hpp:261-272 (spawn() body)</div>
+  </div>
+
+  <div class="card">
+    <h3>What shows confidence in a track?</h3>
+    <table class="datatable">
+      <thead><tr><th>Signal</th><th>Type</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>hits</code></td><td>counter</td><td>consecutive-ish successful associations; feeds <code>is_confirmed()</code></td></tr>
+        <tr><td><code>misses</code></td><td>counter</td><td>cycles since last match; resets to 0 on any hit; track dies past <code>max_misses</code></td></tr>
+        <tr><td><code>sensor_mask</code></td><td>bitmask</td><td><code>popcount</code> = how many <em>distinct</em> sensor kinds ever confirmed this object — the strongest signal, since agreement across sensor types is hard to fake</td></tr>
+        <tr><td><code>pos_sigma()</code></td><td>continuous (metres)</td><td>literal statistical uncertainty from the Kalman covariance — smaller is more confident; this is the only signal that's a real number, not a threshold</td></tr>
+      </tbody>
+    </table>
+    <div class="desc">
+      Only <code>hits</code> and <code>sensor_mask</code> feed the boolean
+      <code>is_confirmed()</code> gate (see the Confirmation logic section below) — that's the
+      pass/fail signal that decides whether a track is published to the planner at all.
+      <code>pos_sigma()</code> is the softer, continuous confidence value: it's read out per track
+      by the renderer (<code>render.hpp</code> footer — each track prints
+      <code>[id v=... σ=...]</code>) so you can literally watch a track's uncertainty shrink on
+      screen as more detections come in.
+    </div>
+    <div class="where">tracker.hpp:142-155 (struct Track), tracker.hpp:256-259 (is_confirmed), render.hpp:371 (footer, σ display)</div>
+  </div>
+</section>
+
+<section id="kalman-predict">
+  <h2>Kalman1D — predict()</h2>
+  <span class="file-tag">Constant-velocity 1D filter, one instance per axis (x and y, decoupled)</span>
+
+  <div class="card">
+    <h3>State &amp; the predict step</h3>
+    <div class="desc">
+      State is $\mathbf{x} = [p, v]^T$ — position and velocity along one axis. $F$ advances the
+      state by $\Delta t$ assuming constant velocity; $Q$ injects uncertainty for the acceleration
+      we didn't model.
+    </div>
+    <div class="eq">
+      $$ \mathbf{x} = F\mathbf{x}, \qquad P = FPF^T + Q, \qquad F = \begin{pmatrix} 1 & \Delta t \\ 0 & 1 \end{pmatrix} $$
+    </div>
+    <div class="desc">Expanded, this is just:</div>
+    <div class="eq">$$ p \mathrel{+}= v \cdot \Delta t \qquad (\text{velocity itself is unchanged by predict}) $$</div>
+    <div class="where">Kalman1D::predict, geometry.hpp Mat2 does the P update</div>
+  </div>
+
+  <div class="card">
+    <h3>Discrete white-noise-acceleration process noise</h3>
+    <div class="desc">
+      $q$ is the assumed acceleration variance (m/s²)². This particular $Q$ shape comes from
+      treating unmodeled acceleration as white noise and integrating twice — it's the standard
+      "discrete white noise acceleration" (DWNA) model for a constant-velocity filter.
+    </div>
+    <div class="eq">
+      $$ Q = q \begin{pmatrix} \Delta t^4/4 & \Delta t^3/2 \\ \Delta t^3/2 & \Delta t^2 \end{pmatrix} $$
+    </div>
+    <div class="where">Kalman1D::predict — d2/d3/d4 are dt², dt³, dt⁴</div>
+  </div>
+</section>
+
+<section id="kalman-update">
+  <h2>Kalman1D — update steps</h2>
+  <span class="file-tag">Two update variants; both are the same equations with a different H</span>
+
+  <div class="card">
+    <h3>Generic Kalman update</h3>
+    <div class="desc">
+      $H$ picks out which state component the measurement $z$ observes; $R$ is that
+      measurement's noise variance; $K$ is the Kalman gain (how much to trust the new
+      measurement vs. the existing belief).
+    </div>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      y &= z - H\mathbf{x} & \text{(innovation)} \\
+      S &= HPH^T + R & \text{(innovation covariance)} \\
+      K &= PH^T S^{-1} & \text{(Kalman gain)} \\
+      \mathbf{x} &= \mathbf{x} + Ky \\
+      P &= (I - KH)P
+      \end{aligned}
+      $$
+    </div>
+    <div class="desc">
+      With a 2-state filter and a <em>scalar</em> measurement, $S$ is a scalar and "matrix inverse"
+      is a plain division — that's why this file needs no linear-algebra library, just
+      <code>Mat2</code>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>update_position() — $H = [1\ 0]$</h3>
+    <div class="desc">Every sensor can report a position, so every detection calls this.</div>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      S &= P_{aa} + r \\
+      K_p &= P_{aa}/S, \quad K_v = P_{ca}/S \\
+      y &= z - p \\
+      p &\mathrel{+}= K_p\, y, \qquad v \mathrel{+}= K_v\, y
+      \end{aligned}
+      $$
+    </div>
+    <div class="where">Kalman1D::update_position(z, r)</div>
+  </div>
+
+  <div class="card">
+    <h3>update_velocity() — $H = [0\ 1]$</h3>
+    <div class="desc">Only radar (Doppler) can measure velocity directly — mirror image of the position update.</div>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      S &= P_{dd} + r \\
+      K_p &= P_{bd}/S, \quad K_v = P_{dd}/S \\
+      y &= z - v \\
+      p &\mathrel{+}= K_p\, y, \qquad v \mathrel{+}= K_v\, y
+      \end{aligned}
+      $$
+    </div>
+    <div class="desc">
+      In practice the codebase <em>doesn't</em> call this by default (<code>use_doppler_updates =
+      false</code>) — see the note in the worked example below for why.
+    </div>
+    <div class="where">Kalman1D::update_velocity(z, r)</div>
+  </div>
+
+  <div class="card">
+    <h3>Position uncertainty (σ)</h3>
+    <div class="desc">A single scalar summary of how confident the track's position estimate is, combining both axes.</div>
+    <div class="eq">$$ \sigma_{\text{pos}} = \sqrt{\tfrac{1}{2}\left(P^x_{aa} + P^y_{aa}\right)} $$</div>
+    <div class="where">Track::pos_sigma</div>
+  </div>
+
+  <div class="example">
+    <h4>Worked example — predict then update</h4>
+    <p>Suppose a track's x-axis filter currently believes:</p>
+    <pre class="block">p = 10.0 m       (position)
+v = 2.0 m/s      (velocity)
+P = [[1.0, 0.0],
+     [0.0, 0.5]]  (covariance)
+
+process noise q = 1.0
+dt = 0.1 s</pre>
+    <p><strong>Predict</strong> (no measurement yet, just advance time):</p>
+    <div class="eq">$$ p \leftarrow 10.0 + 2.0 \times 0.1 = 10.2 $$</div>
+    <pre class="block">Q = 1.0 * [[dt^4/4, dt^3/2],   = [[0.000025, 0.0005],
+           [dt^3/2, dt^2 ]]        [0.0005,   0.01  ]]
+
+P' = F P F^T + Q
+   = [[1.005025, 0.0505],
+      [0.0505,   0.51  ]]</pre>
+    <p>A new lidar detection arrives: <code>z = 10.35 m</code>, measurement variance <code>r = 0.09</code> (σ = 0.3 m, lidar's usual sigma).</p>
+    <p><strong>update_position</strong>:</p>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      S &= 1.005025 + 0.09 = 1.095025 \\
+      K_p &= 1.005025 / 1.095025 \approx 0.9178 \\
+      K_v &= 0.0505 / 1.095025 \approx 0.0461 \\
+      y &= 10.35 - 10.2 = 0.15 \\
+      p &\leftarrow 10.2 + 0.9178 \times 0.15 \approx 10.338 \\
+      v &\leftarrow 2.0 + 0.0461 \times 0.15 \approx 2.007
+      \end{aligned}
+      $$
+    </div>
+    <div class="note">
+      The filter trusts the new position measurement heavily (gain ≈ 0.92, since its own
+      uncertainty had grown during predict) and nudges velocity up only slightly — even
+      though this was a position-only measurement, the position/velocity <em>covariance</em>
+      term $P_{ca}=0.0505$ lets the correction "leak" into the velocity estimate. That's the whole
+      point of tracking both in one filter instead of two independent ones; the leak is small here
+      because after just one 0.1 s predict step the two axes haven't built up much correlation yet.
+    </div>
+  </div>
+</section>
+
+<section id="track">
+  <h2>Track — one object's belief state</h2>
+  <span class="file-tag">Two Kalman1D filters (x, y) plus lifecycle bookkeeping</span>
+
+  <div class="card">
+    <h3>Fields</h3>
+    <pre class="block">struct Track {
+    int      id;
+    Kalman1D x, y;           // decoupled per-axis filters
+    int      hits{1};
+    int      misses{0};
+    unsigned sensor_mask{0}; // bit i set <=> SensorKind i has hit this track
+    Clock::time_point last_seen;
+};</pre>
+    <div class="desc">
+      <code>pos()</code> and <code>vel()</code> just read out <code>{x.position(), y.position()}</code>
+      and <code>{x.velocity(), y.velocity()}</code> — the two axes never talk to each other inside
+      the filter itself, only through how detections update both at once.
+    </div>
+    <div class="where">struct Track</div>
+  </div>
+
+  <div class="card">
+    <h3>sensor_mask as a bitmask</h3>
+    <div class="desc">
+      Each <code>SensorKind</code> (Radar=0, Camera=1, Lidar=2) owns one bit. A hit from sensor
+      kind $k$ OR-s in bit $k$; counting distinct sensor types that have ever hit this track is
+      just <code>std::popcount(sensor_mask)</code>.
+    </div>
+    <pre class="block">sensor_mask |= 1u &lt;&lt; static_cast&lt;unsigned&gt;(d.kind);
+
+  Radar  hit  -> mask = 0b001
+  + Lidar hit -> mask = 0b101   (popcount = 2 -> can now confirm)</pre>
+    <div class="where">Tracker::update, Tracker::spawn</div>
+  </div>
+</section>
+
+<section id="fused-picture">
+  <h2>FusedPicture</h2>
+  <span class="file-tag">What fusion publishes to planner &amp; controller every cycle</span>
+  <div class="card">
+    <h3>The output contract</h3>
+    <pre class="block">struct FusedPicture {
+    Pose               ego{};
+    double             ego_speed{0.0};
+    std::vector&lt;Track&gt; tracks;   // confirmed only
+    Clock::time_point  stamp{};
+};</pre>
+    <div class="desc">
+      Nothing downstream ever sees a tentative track — <code>Tracker::confirmed()</code> filters
+      those out before this struct is built, so the planner never has to reason about track
+      confidence itself.
+    </div>
+    <div class="where">struct FusedPicture</div>
+  </div>
+</section>
+
+<section id="predict-to">
+  <h2>Tracker::predict_to(now)</h2>
+  <span class="file-tag">Step 1 of the cycle — advance every track's belief to the current time</span>
+  <div class="card">
+    <h3>What happens</h3>
+    <div class="desc">
+      On every call after the first, compute $\Delta t$ since the last call and run
+      <code>predict(dt, process_noise)</code> for both axes of every track. The very first call
+      just records <code>now</code> as a baseline — there is nothing to predict from yet.
+    </div>
+    <div class="eq">$$ \Delta t = \text{now} - t_{\text{last}} $$</div>
+    <div class="where">Tracker::predict_to</div>
+  </div>
+</section>
+
+<section id="association">
+  <h2>Tracker::update(detections) — data association</h2>
+  <span class="file-tag">Step 2 — match each detection to a track, or spawn a new one</span>
+
+  <div class="card">
+    <h3>Nearest-neighbour matching with gating</h3>
+    <div class="desc">
+      For each incoming detection, find the closest existing track by Euclidean distance. Accept
+      the match only if it falls inside a <em>gate</em> — a radius that grows with the detection's
+      own uncertainty, so a fuzzy 40 m camera guess is allowed more slack than a precise lidar hit.
+    </div>
+    <div class="eq">$$ \text{gate} = \text{gate}_m + 2\sigma_{\text{det}} $$</div>
+    <ol class="steps">
+      <li>Find <code>best = argmin</code> distance(track.pos(), detection.pos_world) over all tracks.</li>
+      <li>If <code>distance(best, detection) &lt; gate</code>: update that track's Kalman filters (position always; velocity only if the flag is set and it's a radar detection with Doppler).</li>
+      <li>Otherwise: <code>spawn()</code> a brand-new tentative track for this detection.</li>
+      <li>Any track that matched nothing this cycle gets <code>++misses</code>.</li>
+      <li>Tracks with <code>misses &gt; max_misses</code> are pruned via <code>std::erase_if</code>.</li>
+    </ol>
+    <div class="where">Tracker::update</div>
+  </div>
+
+  <div class="card">
+    <h3>Why Doppler doesn't directly update velocity</h3>
+    <div class="desc">
+      Radar's Doppler measurement is <em>radial</em> velocity only (speed toward/away from the
+      sensor), not a full 2D velocity vector. Feeding it straight into
+      <code>update_velocity()</code> for both x and y biases the direction estimate — measured in
+      practice to walk predicted obstacles into the wall on curves. So by default
+      (<code>use_doppler_updates = false</code>), Doppler only <em>seeds</em> a new track's initial
+      velocity in <code>spawn()</code>; it never corrects an existing one. A correct fix needs a
+      coupled 4-state filter (noted in the code as Exercise 6.3).
+    </div>
+    <div class="where">Tracker::update, comment above the doppler branch</div>
+  </div>
+</section>
+
+<section id="confirmation">
+  <h2>Confirmation logic — track lifecycle</h2>
+  <span class="file-tag">tentative → confirmed → dead</span>
+
+  <div class="card">
+    <h3>State machine</h3>
+    <div class="lifecycle">
+      <span class="state tentative">tentative</span>
+      <span class="arrow">&rarr;</span>
+      <span class="state confirmed">confirmed</span>
+      <span class="arrow">&rarr;</span>
+      <span class="state dead">dead</span>
+    </div>
+    <div class="desc">
+      A track starts <strong>tentative</strong> the moment any single detection spawns it. It
+      becomes <strong>confirmed</strong> once both conditions below hold, and is declared
+      <strong>dead</strong> (and pruned) once it's gone too long without a match.
+    </div>
+    <div class="eq">
+      $$
+      \text{confirmed} \iff \text{hits} \ge H_{\text{confirm}} \ \wedge\ \operatorname{popcount}(\text{mask}) \ge S_{\text{confirm}}
+      $$
+    </div>
+    <div class="eq">
+      $$
+      \text{dead} \iff \text{misses} > M_{\max}
+      $$
+    </div>
+    <div class="desc">
+      Default config: <code>confirm_hits = 4</code>, <code>confirm_sensors = 2</code>,
+      <code>max_misses = 15</code>. Requiring 2 distinct sensor kinds is what prevents a single
+      false detector glitch (a camera shadow, a lidar reflection) from becoming a "confirmed"
+      ghost object — it needs a second, independent sensor to agree first.
+    </div>
+    <div class="where">Tracker::is_confirmed, Tracker::Config</div>
+  </div>
+</section>
+
+<section id="spawn-prune">
+  <h2>spawn() and prune</h2>
+  <span class="file-tag">Birth and death of tracks</span>
+
+  <div class="card">
+    <h3>spawn(detection)</h3>
+    <div class="desc">
+      A new track is seeded directly from one detection. If the detection carries a velocity
+      (radar only), that seeds $v_0$ and gets a tighter initial velocity variance
+      (<code>radar_vel_var</code>); otherwise velocity starts at zero with a wide variance (25),
+      reflecting "we have no idea yet."
+    </div>
+    <div class="eq">
+      $$
+      v_0 = \begin{cases} \mathbf{v}_{\text{detection}} & \text{radar} \\ \mathbf{0} & \text{otherwise} \end{cases}
+      \qquad
+      \operatorname{Var}(v_0) = \begin{cases} \sigma^2_{v,\text{radar}} & \text{radar} \\ 25 & \text{otherwise} \end{cases}
+      $$
+    </div>
+    <div class="desc">
+      Position variance seeds from the detection's own $\sigma^2$ — a confident lidar hit starts
+      the new track's position filter more confident than a fuzzy camera guess would.
+    </div>
+    <div class="where">Tracker::spawn</div>
+  </div>
+
+  <div class="card">
+    <h3>Pruning</h3>
+    <div class="desc">
+      After every <code>update()</code>, tracks whose miss counter has exceeded
+      <code>max_misses</code> are removed with C++20's <code>std::erase_if</code> — no manual
+      erase-while-iterating dance needed on the underlying <code>unordered_map</code>.
+    </div>
+    <div class="where">Tracker::update (final erase_if block)</div>
+  </div>
+</section>
+
+</main>
+
+</body>
+</html>

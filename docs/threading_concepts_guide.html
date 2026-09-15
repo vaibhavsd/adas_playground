@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>C++ Threading: Complete Beginner's Guide</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --text: #262b33;
+    --muted: #6b7280;
+    --h1: #1f2937;
+    --h2: #2b3444;
+    --h3: #3d4759;
+    --h4: #4b5568;
+    --concept-bg: #f2f4f8;
+    --concept-border: #4b6480;
+    --warning-bg: #f9f5ec;
+    --warning-border: #a97e2f;
+    --good-bg: #f1f6f2;
+    --good-border: #3f7a52;
+    --bad-bg: #f8f1f0;
+    --bad-border: #a1433a;
+    --diagram-bg: #fbfbfc;
+    --diagram-border: #dde1e7;
+    --code-bg: #eef0f3;
+    --table-border: #e0e3e9;
+    --th-bg: #2b3444;
+    --th-text: #f2f4f7;
+    --row-alt: #f7f8fa;
+    --function-sig-bg: #eef0f3;
+    --function-sig-border: #4b6480;
+    --timeline-bg: #f7f8fa;
+    --timeline-border: #4b6480;
+    --arrow: #4b6480;
+    --memory-model-bg: #ffffff;
+    --memory-model-border: #4b6480;
+    --sync-th-bg: #1f2937;
+    --lock-type-bg: #f2f4f8;
+    --lock-type-border: #4b6480;
+    --step-list-bg: #f7f8fa;
+    --step-list-border: #e0e3e9;
+    --step-list-li-bg: #ffffff;
+    --toggle-bg: #ffffff;
+    --toggle-border: #c7ccd4;
+    --shadow: 0 1px 2px rgba(20, 24, 32, 0.04), 0 1px 8px rgba(20, 24, 32, 0.04);
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171c;
+    --surface: #1a1d23;
+    --text: #d6dbe3;
+    --muted: #8b93a3;
+    --h1: #e8eaee;
+    --h2: #d3d8e0;
+    --h3: #b7bfcc;
+    --h4: #a8b1c0;
+    --concept-bg: #1b1e25;
+    --concept-border: #6b85a3;
+    --warning-bg: #201d17;
+    --warning-border: #b8955c;
+    --good-bg: #171e19;
+    --good-border: #6a9d80;
+    --bad-bg: #201716;
+    --bad-border: #b3766c;
+    --diagram-bg: #1b1e24;
+    --diagram-border: #30343d;
+    --code-bg: #262b33;
+    --table-border: #30343d;
+    --th-bg: #262c38;
+    --th-text: #eef1f6;
+    --row-alt: #1b1e24;
+    --function-sig-bg: #262b33;
+    --function-sig-border: #6b85a3;
+    --timeline-bg: #1b1e24;
+    --timeline-border: #6b85a3;
+    --arrow: #8fa8c2;
+    --memory-model-bg: #1b1e24;
+    --memory-model-border: #6b85a3;
+    --sync-th-bg: #1c212a;
+    --lock-type-bg: #1b1e25;
+    --lock-type-border: #6b85a3;
+    --step-list-bg: #1b1e24;
+    --step-list-border: #30343d;
+    --step-list-li-bg: #20242c;
+    --toggle-bg: #1b1e24;
+    --toggle-border: #3a3f4a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
+    padding: 48px;
+    max-width: 980px;
+    margin: 0 auto;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+    font-size: 15px;
+  }
+  code, pre, .diagram {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, 'Courier New', monospace;
+  }
+  h1 {
+    color: var(--h1);
+    margin-bottom: 14px;
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    color: var(--h2);
+    margin: 44px 0 16px 0;
+    border-bottom: 1px solid var(--table-border);
+    padding-bottom: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    color: var(--h3);
+    margin: 20px 0 10px 0;
+    font-size: 14px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  h4 { color: var(--h4); margin: 15px 0 8px 0; font-size: 14px; font-weight: 600; }
+
+  p { margin: 10px 0; color: var(--text); }
+  ul, ol { margin: 10px 0 10px 25px; }
+  li { margin: 8px 0; }
+
+  .concept-box {
+    background: var(--concept-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--concept-border);
+    padding: 18px 20px;
+    margin: 15px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+
+  .warning-box {
+    background: var(--warning-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--warning-border);
+    padding: 18px 20px;
+    margin: 15px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+
+  .good-box {
+    background: var(--good-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--good-border);
+    padding: 18px 20px;
+    margin: 15px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+
+  .bad-box {
+    background: var(--bad-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--bad-border);
+    padding: 18px 20px;
+    margin: 15px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+
+  .diagram {
+    background: var(--diagram-bg);
+    border: 1px solid var(--diagram-border);
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+
+  code {
+    background: var(--code-bg);
+    color: var(--text);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.85em;
+  }
+
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid #383838;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    color: #d4d4d4;
+  }
+
+  .keyword { color: #569cd6; }
+  .string { color: #ce9178; }
+  .comment { color: #6a9955; }
+  .type { color: #4ec9b0; }
+  .function { color: #dcdcaa; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    border: 1px solid var(--table-border);
+    padding: 11px 14px;
+    text-align: left;
+  }
+  th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-size: 12px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  tr:nth-child(even) { background: var(--row-alt); }
+
+  .function-sig {
+    background: var(--function-sig-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--function-sig-border);
+    padding: 12px 16px;
+    margin: 10px 0;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  .timeline {
+    background: var(--timeline-bg);
+    border: 1px solid var(--table-border);
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+
+  .timeline-item {
+    margin: 15px 0;
+    padding-left: 25px;
+    border-left: 3px solid var(--timeline-border);
+  }
+
+  .arrow { color: var(--arrow); font-weight: 600; }
+
+  .header-emoji { font-size: 22px; margin-right: 8px; opacity: 0.85; }
+
+  .memory-model {
+    background: var(--memory-model-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--memory-model-border);
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+  }
+
+  .sync-comparison table th {
+    background: var(--sync-th-bg);
+  }
+
+  .lock-type {
+    display: inline-block;
+    background: var(--lock-type-bg);
+    border: 1px solid var(--lock-type-border);
+    padding: 7px 12px;
+    margin: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+  }
+
+  .step-list {
+    background: var(--step-list-bg);
+    border: 1px solid var(--step-list-border);
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 8px;
+  }
+
+  .step-list ol {
+    margin: 10px 0 10px 30px;
+  }
+
+  .step-list li {
+    margin: 12px 0;
+    padding: 8px;
+    background: var(--step-list-li-bg);
+    border: 1px solid var(--table-border);
+    border-left: 3px solid var(--timeline-border);
+    padding-left: 12px;
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+  }
+
+  #theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--toggle-bg);
+    color: var(--muted);
+    border: 1px solid var(--toggle-border);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+    transition: opacity 0.15s ease;
+  }
+  #theme-toggle:hover { opacity: 0.75; }
+
+</style>
+</head>
+<body>
+
+<button id="theme-toggle" onclick="toggleTheme()">🌙 Dark mode</button>
+<script>
+  (function () {
+    const stored = localStorage.getItem('adas-docs-theme');
+    const theme = stored || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+  function toggleTheme() {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('adas-docs-theme', next);
+    document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('theme-toggle').textContent =
+      document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+  });
+</script>
+
+<h1><span class="header-emoji">🧵</span>C++ Threading: Complete Beginner's Guide</h1>
+<p><strong>Goal:</strong> Understand threads, synchronization primitives, and how to write safe concurrent code.</p>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">📚</span>Part 1: Threading Fundamentals</h2>
+
+<div class="concept-box">
+  <h3>What is a Thread?</h3>
+  <p>A thread is a <strong>lightweight execution path</strong> within a process. Multiple threads share the same memory space but run code independently and (on multi-core CPUs) in parallel.</p>
+  <p><strong>Key idea:</strong> While Thread A is executing a function, Thread B can simultaneously execute a different function. They can interfere with each other if they access the same data—that's why <strong>synchronization</strong> matters.</p>
+</div>
+
+<div class="diagram">
+<pre>
+Single-threaded program (old way):
+┌──────────────────────────────────────┐
+│ Main Thread                          │
+│  Step 1 → Step 2 → Step 3 → Step 4  │
+│  (everything runs one-by-one)        │
+└──────────────────────────────────────┘
+  Time: ████████████████████████
+
+Multi-threaded program (now):
+┌──────────────────────────┐
+│ Main Thread              │
+│  Step 1 → Step 2 → ... → │
+└──────────────────────────┘
+┌──────────────────────────┐
+│ Worker Thread 1          │
+│  Task A → Task B → ...   │
+└──────────────────────────┘
+┌──────────────────────────┐
+│ Worker Thread 2          │
+│  Task X → Task Y → ...   │
+└──────────────────────────┘
+  Time: ████ (all parallel!)
+
+Result: More work done in same time ✓
+</pre>
+</div>
+
+<div class="good-box">
+  <h3>✓ When to Use Threads</h3>
+  <ul>
+    <li>Your program needs to do multiple things at once (e.g., sensor reading + computation)</li>
+    <li>You have a multi-core CPU and want to use all cores</li>
+    <li>You need to keep a UI responsive while doing background work</li>
+    <li>You want event-driven processing (e.g., fusion thread wakes only when data arrives)</li>
+  </ul>
+</div>
+
+<div class="bad-box">
+  <h3>✗ When NOT to Use Threads</h3>
+  <ul>
+    <li>Your program is single-core or latency-sensitive without parallelism</li>
+    <li>You can solve it with a simple loop or callback</li>
+    <li>You don't need true parallelism (async/await might be simpler)</li>
+    <li>You're unsure about synchronization—threads add complexity!</li>
+  </ul>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">⚙️</span>Part 2: Creating and Managing Threads</h2>
+
+<h3>Header: <code>#include &lt;thread&gt;</code></h3>
+
+<h4>Basic Example: Create and Join a Thread</h4>
+<pre><code class="comment">// Simple function for a thread to run</code>
+<span class="keyword">void</span> <span class="function">worker</span>() {
+    std::cout &lt;&lt; <span class="string">"Worker thread running!"</span> &lt;&lt; std::endl;
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    <span class="comment">// Create a thread, pass function name</span>
+    std::<span class="type">thread</span> t(<span class="function">worker</span>);
+
+    <span class="comment">// Main thread continues here in parallel</span>
+    std::cout &lt;&lt; <span class="string">"Main thread running!"</span> &lt;&lt; std::endl;
+
+    <span class="comment">// Wait for worker to finish (REQUIRED!)</span>
+    t.<span class="function">join</span>();
+
+    <span class="comment">// Safe to exit now</span>
+    <span class="keyword">return</span> 0;
+}
+</code></pre>
+
+<div class="warning-box">
+  <h3>⚠️ Critical Rule: ALWAYS join() or detach()</h3>
+  <p>Before a thread object is destroyed, you <strong>must call</strong> either:</p>
+  <ul>
+    <li><code>thread.join()</code> — wait for thread to finish</li>
+    <li><code>thread.detach()</code> — let thread run in background (dangerous!)</li>
+  </ul>
+  <p><strong>Why?</strong> Destroying a joinable thread calls <code>std::terminate()</code> and crashes your program!</p>
+</div>
+
+<div class="function-sig">
+  <h4>std::thread Constructor</h4>
+  <p><code>std::thread(function, arg1, arg2, ...)</code></p>
+  <p>Creates and starts a thread immediately. Can pass any callable (function, lambda, functor).</p>
+</div>
+
+<h4>Passing Arguments to Threads</h4>
+<pre><code><span class="keyword">void</span> <span class="function">add</span>(<span class="keyword">int</span> a, <span class="keyword">int</span> b) {
+    std::cout &lt;&lt; a &lt;&lt; <span class="string">" + "</span> &lt;&lt; b &lt;&lt; <span class="string">" = "</span> &lt;&lt; (a + b) &lt;&lt; std::endl;
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    <span class="comment">// Pass arguments to thread</span>
+    std::<span class="type">thread</span> t(<span class="function">add</span>, 3, 5);
+    t.<span class="function">join</span>();
+    <span class="keyword">return</span> 0;
+}
+</code></pre>
+
+<h4>Using Lambdas (Modern C++)</h4>
+<pre><code><span class="keyword">int</span> <span class="function">main</span>() {
+    std::<span class="type">thread</span> t([] {
+        std::cout &lt;&lt; <span class="string">"Lambda thread!"</span> &lt;&lt; std::endl;
+    });
+    t.<span class="function">join</span>();
+    <span class="keyword">return</span> 0;
+}
+</code></pre>
+
+<h3>Modern: std::jthread (C++20)</h3>
+<div class="good-box">
+  <p><code>std::jthread</code> automatically joins when destroyed (no need to manually call <code>join()</code>).</p>
+  <pre><code><span class="keyword">int</span> <span class="function">main</span>() {
+    std::<span class="type">jthread</span> t([] { std::cout &lt;&lt; <span class="string">"Auto-joining!"</span> &lt;&lt; std::endl; });
+    <span class="comment">// t automatically joins here when t goes out of scope ✓</span>
+    <span class="keyword">return</span> 0;
+}
+</code></pre>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">🔐</span>Part 3: The Race Condition Problem</h2>
+
+<div class="bad-box">
+  <h3>❌ Race Condition Example (DANGEROUS!)</h3>
+  <pre><code><span class="keyword">int</span> counter = 0;
+
+<span class="keyword">void</span> <span class="function">increment</span>() {
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = 0; i &lt; 100000; i++) {
+        counter++;  <span class="comment">// THIS IS NOT ATOMIC!</span>
+    }
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    std::<span class="type">thread</span> t1(<span class="function">increment</span>);
+    std::<span class="type">thread</span> t2(<span class="function">increment</span>);
+
+    t1.<span class="function">join</span>();
+    t2.<span class="function">join</span>();
+
+    <span class="comment">// Expected: 200000, but might be 150000! 🚨</span>
+    std::cout &lt;&lt; counter &lt;&lt; std::endl;
+}
+</code></pre>
+</div>
+
+<div class="concept-box">
+  <h3>Why This Fails</h3>
+  <p><code>counter++</code> is <strong>not a single CPU instruction</strong>. It's actually 3 steps:</p>
+  <ol>
+    <li>Read current value of counter</li>
+    <li>Add 1</li>
+    <li>Write back to memory</li>
+  </ol>
+  <p>If threads interleave, one thread's increment can get lost:</p>
+  <div class="diagram">
+<pre>
+Thread 1                    Thread 2                  counter value
+Read (counter=5)
+                           Read (counter=5)           5
+Add 1 (= 6)
+Write back (counter=6)                                6
+                           Add 1 (= 6)
+                           Write back (counter=6)     6  ← OOPS! Should be 7
+</pre>
+  </div>
+</div>
+
+<div class="good-box">
+  <h3>✓ Solution: Synchronization</h3>
+  <p>Protect shared data so only one thread accesses it at a time. This is called a <strong>critical section</strong>.</p>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">🔒</span>Part 4: Synchronization Primitives</h2>
+
+<h3>1. Mutex (Mutual Exclusion)</h3>
+<div class="function-sig">
+  <p><strong>Header:</strong> <code>#include &lt;mutex&gt;</code></p>
+  <p><strong>What it does:</strong> Only one thread can hold a mutex at a time. Others wait.</p>
+</div>
+
+<h4>Basic Usage</h4>
+<pre><code>#<span class="keyword">include</span> <span class="string">&lt;mutex&gt;</span>
+
+std::<span class="type">mutex</span> mtx;
+<span class="keyword">int</span> counter = 0;
+
+<span class="keyword">void</span> <span class="function">increment</span>() {
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = 0; i &lt; 100000; i++) {
+        <span class="comment">// Lock before accessing shared data</span>
+        mtx.<span class="function">lock</span>();
+        counter++;
+        mtx.<span class="function">unlock</span>();  <span class="comment">// Unlock after</span>
+    }
+}
+</code></pre>
+
+<div class="warning-box">
+  <h3>⚠️ Problem: Exceptions!</h3>
+  <p>If an exception happens between <code>lock()</code> and <code>unlock()</code>, the mutex stays locked forever (deadlock!).</p>
+</div>
+
+<h4>Better: Use RAII Lock Guards</h4>
+<div class="good-box">
+  <pre><code><span class="keyword">void</span> <span class="function">increment</span>() {
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = 0; i &lt; 100000; i++) {
+        <span class="comment">// RAII: lock acquired in constructor, released in destructor</span>
+        std::<span class="type">lock_guard</span>&lt;std::<span class="type">mutex</span>&gt; lock(mtx);
+        counter++;
+        <span class="comment">// lock automatically released here ✓</span>
+    }
+}
+</code></pre>
+</div>
+
+<h3>2. Lock Types (RAII Wrappers)</h3>
+<table>
+  <tr>
+    <th>Lock Type</th>
+    <th>Behavior</th>
+    <th>Use Case</th>
+  </tr>
+  <tr>
+    <td><code>lock_guard</code></td>
+    <td>Locks on creation, unlocks on destruction. Can't unlock early.</td>
+    <td>Simple, scope-based locking. Most common.</td>
+  </tr>
+  <tr>
+    <td><code>unique_lock</code></td>
+    <td>Locks on creation, unlocks on destruction. Can manually unlock/relock.</td>
+    <td>Need flexibility. Works with condition variables.</td>
+  </tr>
+  <tr>
+    <td><code>shared_lock</code></td>
+    <td>Multiple readers can hold simultaneously (read-only).</td>
+    <td>Many readers, few writers. Needs <code>shared_mutex</code>.</td>
+  </tr>
+</table>
+
+<h4>unique_lock Example (More Control)</h4>
+<pre><code>std::<span class="type">mutex</span> mtx;
+
+<span class="keyword">void</span> <span class="function">example</span>() {
+    std::<span class="type">unique_lock</span>&lt;std::<span class="type">mutex</span>&gt; lock(mtx);  <span class="comment">// Locks here</span>
+
+    std::cout &lt;&lt; <span class="string">"Protected section"</span> &lt;&lt; std::endl;
+
+    lock.<span class="function">unlock</span>();  <span class="comment">// Unlock early if needed</span>
+    <span class="keyword">long_operation</span>();  <span class="comment">// Run without lock</span>
+    lock.<span class="function">lock</span>();  <span class="comment">// Re-lock</span>
+
+    <span class="comment">// Automatically unlocks at end of scope</span>
+}
+</code></pre>
+
+<h3>3. Atomic Operations (Lock-Free)</h3>
+<div class="function-sig">
+  <p><strong>Header:</strong> <code>#include &lt;atomic&gt;</code></p>
+  <p><strong>What it does:</strong> Guarantees single-instruction operations. No locks needed!</p>
+</div>
+
+<div class="good-box">
+  <h4>✓ Atomic Counter (No Mutex!)</h4>
+  <pre><code>#<span class="keyword">include</span> <span class="string">&lt;atomic&gt;</span>
+
+std::<span class="type">atomic</span>&lt;<span class="keyword">int</span>&gt; counter = 0;  <span class="comment">// Atomic version counter</span>
+
+<span class="keyword">void</span> <span class="function">increment</span>() {
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = 0; i &lt; 100000; i++) {
+        counter++;  <span class="comment">// Safe! Atomic operation, no lock needed</span>
+    }
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    {
+        std::<span class="type">jthread</span> t1(<span class="function">increment</span>);
+        std::<span class="type">jthread</span> t2(<span class="function">increment</span>);
+    } <span class="comment">// Both threads auto-join here when they go out of scope</span>
+
+    std::cout &lt;&lt; counter.<span class="function">load</span>() &lt;&lt; std::endl;  <span class="comment">// Correctly prints 200000 ✓</span>
+    <span class="keyword">return</span> 0;
+}
+</code></pre>
+</div>
+
+<table>
+  <tr>
+    <th>Atomic Method</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>.load()</code></td>
+    <td>Read the value (with memory ordering)</td>
+  </tr>
+  <tr>
+    <td><code>.store(val)</code></td>
+    <td>Write the value (with memory ordering)</td>
+  </tr>
+  <tr>
+    <td><code>++, +=</code></td>
+    <td>Atomic increment/addition</td>
+  </tr>
+  <tr>
+    <td><code>.exchange(val)</code></td>
+    <td>Swap value and return old one</td>
+  </tr>
+  <tr>
+    <td><code>.compare_exchange(expected, desired)</code></td>
+    <td>Update only if current == expected (atomic compare-and-swap)</td>
+  </tr>
+</table>
+
+<h3>4. Condition Variables (Wait & Notify)</h3>
+<div class="function-sig">
+  <p><strong>Header:</strong> <code>#include &lt;condition_variable&gt;</code></p>
+  <p><strong>What it does:</strong> Thread waits until another thread signals "condition is ready"</p>
+</div>
+
+<div class="concept-box">
+  <h3>Producer-Consumer Pattern</h3>
+  <div class="diagram">
+<pre>
+Producer Thread                Consumer Thread
+  Make data
+  Notify CV ──────────────→     Wake from sleep
+                           Acquire lock
+                           Process data
+                           Release lock
+  Make more data
+</pre>
+  </div>
+</div>
+
+<h4>Example: Data Queue</h4>
+<pre><code>#<span class="keyword">include</span> <span class="string">&lt;condition_variable&gt;</span>
+#<span class="keyword">include</span> <span class="string">&lt;queue&gt;</span>
+
+std::<span class="type">queue</span>&lt;<span class="keyword">int</span>&gt; data_queue;
+std::<span class="type">mutex</span> mtx;
+std::<span class="type">condition_variable</span> cv;
+<span class="keyword">bool</span> done = <span class="keyword">false</span>;  <span class="comment">// Tells consumer no more data is coming</span>
+
+<span class="comment">// Producer: puts data in queue and notifies</span>
+<span class="keyword">void</span> <span class="function">producer</span>() {
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = 0; i &lt; 10; i++) {
+        {
+            std::<span class="type">lock_guard</span>&lt;std::<span class="type">mutex</span>&gt; lock(mtx);
+            data_queue.<span class="function">push</span>(i);
+        }
+        cv.<span class="function">notify_one</span>();  <span class="comment">// Wake sleeping consumer</span>
+    }
+    {
+        std::<span class="type">lock_guard</span>&lt;std::<span class="type">mutex</span>&gt; lock(mtx);
+        done = <span class="keyword">true</span>;  <span class="comment">// No more items will ever be pushed</span>
+    }
+    cv.<span class="function">notify_one</span>();  <span class="comment">// Wake consumer so it can notice 'done'</span>
+}
+
+<span class="comment">// Consumer: waits for data, then processes</span>
+<span class="keyword">void</span> <span class="function">consumer</span>() {
+    <span class="keyword">while</span> (<span class="keyword">true</span>) {
+        std::<span class="type">unique_lock</span>&lt;std::<span class="type">mutex</span>&gt; lock(mtx);
+
+        <span class="comment">// Wait until queue has data OR producer is done (releases lock while waiting!)</span>
+        cv.<span class="function">wait</span>(lock, [] { <span class="keyword">return</span> !data_queue.<span class="function">empty</span>() || done; });
+
+        <span class="keyword">if</span> (data_queue.<span class="function">empty</span>() &amp;&amp; done) {
+            <span class="keyword">break</span>;  <span class="comment">// Nothing left, and nothing more coming — exit the loop</span>
+        }
+
+        <span class="keyword">int</span> value = data_queue.<span class="function">front</span>();
+        data_queue.<span class="function">pop</span>();
+        lock.<span class="function">unlock</span>();
+
+        std::cout &lt;&lt; <span class="string">"Processed: "</span> &lt;&lt; value &lt;&lt; std::endl;
+    }
+}
+</code></pre>
+
+<div class="good-box">
+  <h3>✓ Why Not Just Loop & Check?</h3>
+  <p>You could check in a loop, but it wastes CPU (busy-waiting). Condition variables put thread to sleep until signaled—efficient!</p>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">📋</span>Part 5: Synchronization Comparison</h2>
+
+<table class="sync-comparison">
+  <tr>
+    <th>Primitive</th>
+    <th>Purpose</th>
+    <th>Use When</th>
+    <th>Overhead</th>
+  </tr>
+  <tr>
+    <td><code>std::mutex</code></td>
+    <td>Exclusive access (one thread at a time)</td>
+    <td>Protecting a shared resource from corruption</td>
+    <td>Medium (lock/unlock cost)</td>
+  </tr>
+  <tr>
+    <td><code>std::shared_mutex</code></td>
+    <td>Read-write lock (many readers OR one writer)</td>
+    <td>Many readers, few writers (e.g., config file)</td>
+    <td>High (more complex than mutex)</td>
+  </tr>
+  <tr>
+    <td><code>std::atomic</code></td>
+    <td>Lock-free operations on single values</td>
+    <td>Counters, flags, version numbers (no contention)</td>
+    <td>Low (single CPU instruction)</td>
+  </tr>
+  <tr>
+    <td><code>std::condition_variable</code></td>
+    <td>Wait for a condition to be true</td>
+    <td>Producer-consumer, waiting for events</td>
+    <td>Low (thread sleeps, doesn't spin)</td>
+  </tr>
+  <tr>
+    <td><code>std::latch</code> (C++20)</td>
+    <td>One-time synchronization point</td>
+    <td>Wait for N threads to reach a point</td>
+    <td>Low (used once)</td>
+  </tr>
+  <tr>
+    <td><code>std::semaphore</code> (C++20)</td>
+    <td>Counter-based access (like N resource slots)</td>
+    <td>Limiting concurrent access to N things</td>
+    <td>Low</td>
+  </tr>
+</table>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">⚡</span>Part 6: C++20 Utilities</h2>
+
+<h3>std::latch (Barrier Synchronization)</h3>
+<div class="concept-box">
+  <p><strong>What:</strong> Threads wait until a counter reaches zero.</p>
+  <p><strong>Use case:</strong> Start all worker threads simultaneously (no partial startup races).</p>
+  <pre><code>std::<span class="type">latch</span> start_gate(3);  <span class="comment">// Wait for 3 threads</span>
+
+<span class="keyword">void</span> <span class="function">worker</span>(<span class="keyword">int</span> id) {
+    start_gate.<span class="function">arrive_and_wait</span>();  <span class="comment">// Decrement counter and wait</span>
+    std::cout &lt;&lt; <span class="string">"Worker "</span> &lt;&lt; id &lt;&lt; <span class="string">" GO!"</span> &lt;&lt; std::endl;
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    std::<span class="type">jthread</span> t1(<span class="function">worker</span>, 1);
+    std::<span class="type">jthread</span> t2(<span class="function">worker</span>, 2);
+    std::<span class="type">jthread</span> t3(<span class="function">worker</span>, 3);
+    <span class="comment">// All 3 threads wait here, then all print "GO!" together ✓</span>
+}
+</code></pre>
+</div>
+
+<h3>std::stop_token (Cooperative Shutdown)</h3>
+<div class="concept-box">
+  <p><strong>What:</strong> Signal threads to stop cleanly (works with <code>jthread</code>).</p>
+  <pre><code><span class="keyword">void</span> <span class="function">worker</span>(std::<span class="type">stop_token</span> stoken) {
+    <span class="keyword">while</span> (!stoken.<span class="function">stop_requested</span>()) {
+        <span class="comment">// Do work...</span>
+    }
+    <span class="comment">// Clean exit</span>
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    std::<span class="type">jthread</span> t(<span class="function">worker</span>);
+    std::<span class="keyword">this_thread</span>::<span class="function">sleep_for</span>(std::<span class="type">chrono</span>::<span class="type">seconds</span>(5));
+    t.<span class="function">request_stop</span>();  <span class="comment">// Signal stop (worker exits loop)</span>
+    <span class="comment">// t automatically joins ✓</span>
+}
+</code></pre>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">🎯</span>Part 7: Common Patterns</h2>
+
+<h3>Pattern 1: Reader-Writer (Shared Mutex)</h3>
+<pre><code>std::<span class="type">shared_mutex</span> mtx;
+<span class="type">Data</span> shared_data;
+
+<span class="comment">// Many threads can read simultaneously</span>
+<span class="keyword">void</span> <span class="function">reader</span>() {
+    std::<span class="type">shared_lock</span> lock(mtx);  <span class="comment">// Shared read lock</span>
+    <span class="type">Data</span> copy = shared_data;  <span class="comment">// Safe to read</span>
+}
+
+<span class="comment">// Only one thread can write</span>
+<span class="keyword">void</span> <span class="function">writer</span>() {
+    std::<span class="type">unique_lock</span> lock(mtx);  <span class="comment">// Exclusive write lock</span>
+    shared_data = <span class="type">Data</span>();  <span class="comment">// Exclusive access</span>
+}
+</code></pre>
+
+<h3>Pattern 2: Thread-Safe Wrapper (RAII)</h3>
+<pre><code><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
+<span class="keyword">class</span> <span class="type">Safe</span> {
+    <span class="type">T</span> value_;
+    mutable std::<span class="type">mutex</span> mtx_;
+
+<span class="keyword">public</span>:
+    <span class="keyword">void</span> <span class="function">set</span>(T val) {
+        std::<span class="type">lock_guard</span> lock(mtx_);
+        value_ = val;
+    }
+
+    <span class="type">T</span> <span class="function">get</span>() {
+        std::<span class="type">lock_guard</span> lock(mtx_);
+        <span class="keyword">return</span> value_;
+    }
+};
+
+<span class="comment">// Usage:</span>
+<span class="type">Safe</span>&lt;<span class="keyword">int</span>&gt; counter;
+counter.<span class="function">set</span>(5);
+<span class="keyword">int</span> val = counter.<span class="function">get</span>();  <span class="comment">// Always thread-safe ✓</span>
+</code></pre>
+
+<h3>Pattern 3: Blocking Queue</h3>
+<pre><code><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
+<span class="keyword">class</span> <span class="type">BlockingQueue</span> {
+    std::<span class="type">queue</span>&lt;T&gt; q_;
+    mutable std::<span class="type">mutex</span> mtx_;
+    std::<span class="type">condition_variable</span> cv_;
+
+<span class="keyword">public</span>:
+    <span class="keyword">void</span> <span class="function">push</span>(T val) {
+        {
+            std::<span class="type">lock_guard</span> lock(mtx_);
+            q_.<span class="function">push</span>(val);
+        }
+        cv_.<span class="function">notify_one</span>();
+    }
+
+    <span class="type">T</span> <span class="function">pop</span>() {
+        std::<span class="type">unique_lock</span> lock(mtx_);
+        cv_.<span class="function">wait</span>(lock, [<span class="keyword">this</span>] { <span class="keyword">return</span> !q_.<span class="function">empty</span>(); });
+        <span class="type">T</span> val = q_.<span class="function">front</span>();
+        q_.<span class="function">pop</span>();
+        <span class="keyword">return</span> val;
+    }
+};
+</code></pre>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">🚀</span>Part 8: Important Functions Reference</h2>
+
+<h3>Thread Management</h3>
+<table>
+  <tr>
+    <th>Function</th>
+    <th>Signature</th>
+    <th>What It Does</th>
+  </tr>
+  <tr>
+    <td><code>std::thread(fn, ...)</code></td>
+    <td>Constructor</td>
+    <td>Create and start a thread</td>
+  </tr>
+  <tr>
+    <td><code>.join()</code></td>
+    <td><code>void</code></td>
+    <td>Wait for thread to finish</td>
+  </tr>
+  <tr>
+    <td><code>.detach()</code></td>
+    <td><code>void</code></td>
+    <td>Let thread run in background (dangerous!)</td>
+  </tr>
+  <tr>
+    <td><code>.joinable()</code></td>
+    <td><code>bool</code></td>
+    <td>Check if thread is still running</td>
+  </tr>
+  <tr>
+    <td><code>.get_id()</code></td>
+    <td><code>std::thread::id</code></td>
+    <td>Get unique ID of this thread</td>
+  </tr>
+  <tr>
+    <td><code>std::this_thread::get_id()</code></td>
+    <td><code>std::thread::id</code></td>
+    <td>Get ID of current thread</td>
+  </tr>
+  <tr>
+    <td><code>std::this_thread::sleep_for(duration)</code></td>
+    <td><code>void</code></td>
+    <td>Sleep current thread for N ms/seconds/etc</td>
+  </tr>
+</table>
+
+<h3>Mutex & Locking</h3>
+<table>
+  <tr>
+    <th>Function</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>std::lock_guard&lt;Mutex&gt; lock(mtx)</code></td>
+    <td>RAII lock (acquired on construction, released on destruction)</td>
+  </tr>
+  <tr>
+    <td><code>std::unique_lock&lt;Mutex&gt; lock(mtx)</code></td>
+    <td>RAII lock with manual lock/unlock capability</td>
+  </tr>
+  <tr>
+    <td><code>std::shared_lock&lt;Mutex&gt; lock(mtx)</code></td>
+    <td>RAII read lock (multiple readers allowed)</td>
+  </tr>
+  <tr>
+    <td><code>mtx.lock()</code></td>
+    <td>Acquire lock (blocks if held by another thread)</td>
+  </tr>
+  <tr>
+    <td><code>mtx.unlock()</code></td>
+    <td>Release lock</td>
+  </tr>
+  <tr>
+    <td><code>mtx.try_lock()</code></td>
+    <td>Try to acquire (returns immediately, true if success)</td>
+  </tr>
+  <tr>
+    <td><code>std::lock(m1, m2, ...)</code></td>
+    <td>Acquire multiple locks in deadlock-free order</td>
+  </tr>
+</table>
+
+<h3>Condition Variables</h3>
+<table>
+  <tr>
+    <th>Function</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>cv.wait(lock)</code></td>
+    <td>Release lock, wait until notified, re-acquire lock</td>
+  </tr>
+  <tr>
+    <td><code>cv.wait(lock, predicate)</code></td>
+    <td>Wait until predicate returns true (spurious wakeup safe)</td>
+  </tr>
+  <tr>
+    <td><code>cv.wait_for(lock, duration)</code></td>
+    <td>Wait with timeout</td>
+  </tr>
+  <tr>
+    <td><code>cv.notify_one()</code></td>
+    <td>Wake one waiting thread</td>
+  </tr>
+  <tr>
+    <td><code>cv.notify_all()</code></td>
+    <td>Wake all waiting threads</td>
+  </tr>
+</table>
+
+<h3>Atomics</h3>
+<table>
+  <tr>
+    <th>Function</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>std::atomic&lt;T&gt; var</code></td>
+    <td>Create atomic variable</td>
+  </tr>
+  <tr>
+    <td><code>var.load()</code></td>
+    <td>Atomically read value</td>
+  </tr>
+  <tr>
+    <td><code>var.store(value)</code></td>
+    <td>Atomically write value</td>
+  </tr>
+  <tr>
+    <td><code>var.exchange(value)</code></td>
+    <td>Atomically swap and return old value</td>
+  </tr>
+  <tr>
+    <td><code>var.compare_exchange(expected, desired)</code></td>
+    <td>Update if current == expected (CAS operation)</td>
+  </tr>
+  <tr>
+    <td><code>var++, var--</code></td>
+    <td>Atomic increment/decrement</td>
+  </tr>
+  <tr>
+    <td><code>var += n</code></td>
+    <td>Atomic add</td>
+  </tr>
+</table>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">⚠️</span>Part 9: Common Pitfalls & How to Avoid Them</h2>
+
+<div class="bad-box">
+  <h3>❌ Pitfall 1: Forgetting to join()</h3>
+  <pre><code><span class="keyword">void</span> <span class="function">bad_example</span>() {
+    std::<span class="type">thread</span> t([] { std::cout &lt;&lt; <span class="string">"Hello"</span> &lt;&lt; std::endl; });
+    <span class="comment">// CRASH! t is destroyed without joining ❌</span>
+}
+
+<span class="comment">// Fix:</span>
+<span class="keyword">void</span> <span class="function">good_example</span>() {
+    std::<span class="type">jthread</span> t([] { std::cout &lt;&lt; <span class="string">"Hello"</span> &lt;&lt; std::endl; });
+    <span class="comment">// Auto-joins ✓</span>
+}
+</code></pre>
+</div>
+
+<div class="bad-box">
+  <h3>❌ Pitfall 2: Deadlock (Circular Waiting)</h3>
+  <pre><code>std::<span class="type">mutex</span> m1, m2;
+
+<span class="comment">// Thread 1</span>
+<span class="keyword">void</span> <span class="function">thread1</span>() {
+    m1.<span class="function">lock</span>();
+    <span class="keyword">sleep</span>(100);
+    m2.<span class="function">lock</span>();  <span class="comment">// Waits for m2...</span>
+}
+
+<span class="comment">// Thread 2</span>
+<span class="keyword">void</span> <span class="function">thread2</span>() {
+    m2.<span class="function">lock</span>();
+    <span class="keyword">sleep</span>(100);
+    m1.<span class="function">lock</span>();  <span class="comment">// Waits for m1...</span>
+}
+<span class="comment">// DEADLOCK! ❌ Each waits for the other</span>
+
+<span class="comment">// Fix: Always acquire locks in same order</span>
+<span class="keyword">void</span> <span class="function">fixed_thread1</span>() {
+    std::<span class="function">lock</span>(m1, m2);  <span class="comment">// Atomic lock both ✓</span>
+    std::<span class="type">lock_guard</span> l1(m1, std::<span class="type">adopt_lock</span>);
+    std::<span class="type">lock_guard</span> l2(m2, std::<span class="type">adopt_lock</span>);
+}
+</code></pre>
+</div>
+
+<div class="bad-box">
+  <h3>❌ Pitfall 3: Use-After-Free</h3>
+  <pre><code><span class="keyword">void</span> <span class="function">bad_example</span>() {
+    <span class="keyword">int</span>* ptr = <span class="keyword">new</span> <span class="keyword">int</span>(42);
+    std::<span class="type">thread</span> t([ptr] {
+        std::<span class="keyword">this_thread</span>::<span class="function">sleep_for</span>(std::<span class="type">chrono</span>::<span class="type">seconds</span>(1));
+        std::cout &lt;&lt; *ptr &lt;&lt; std::endl;  <span class="comment">// ptr might be deleted! ❌</span>
+    });
+    <span class="keyword">delete</span> ptr;  <span class="comment">// Oops!</span>
+    t.<span class="function">join</span>();
+}
+
+<span class="comment">// Fix: Use shared_ptr or copy by value</span>
+<span class="keyword">void</span> <span class="function">good_example</span>() {
+    <span class="keyword">int</span> value = 42;
+    std::<span class="type">thread</span> t([value] {  <span class="comment">// Copy captured by value ✓</span>
+        std::<span class="keyword">this_thread</span>::<span class="function">sleep_for</span>(std::<span class="type">chrono</span>::<span class="type">seconds</span>(1));
+        std::cout &lt;&lt; value &lt;&lt; std::endl;
+    });
+    t.<span class="function">join</span>();
+}
+</code></pre>
+</div>
+
+<div class="bad-box">
+  <h3>❌ Pitfall 4: Spurious Wakeups</h3>
+  <pre><code><span class="comment">// WRONG: CV can wake up without notification!</span>
+<span class="keyword">void</span> <span class="function">bad_wait</span>(std::<span class="type">unique_lock</span>&lt;std::<span class="type">mutex</span>&gt;&amp; lock) {
+    cv.<span class="function">wait</span>(lock);  <span class="comment">// Might wake without data! ❌</span>
+    <span class="keyword">int</span> value = queue.<span class="function">front</span>();  <span class="comment">// CRASH: queue is empty!</span>
+}
+
+<span class="comment">// CORRECT: Always use predicate</span>
+<span class="keyword">void</span> <span class="function">good_wait</span>(std::<span class="type">unique_lock</span>&lt;std::<span class="type">mutex</span>&gt;&amp; lock) {
+    cv.<span class="function">wait</span>(lock, [this] { <span class="keyword">return</span> !queue.<span class="function">empty</span>(); });  <span class="comment">// ✓</span>
+    <span class="keyword">int</span> value = queue.<span class="function">front</span>();
+}
+</code></pre>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">✅</span>Part 10: Best Practices Checklist</h2>
+
+<div class="good-box">
+  <h3>✓ Dos</h3>
+  <ul>
+    <li>✓ Use <code>std::jthread</code> instead of <code>std::thread</code> (auto-joins)</li>
+    <li>✓ Always use RAII locks (<code>lock_guard</code>, <code>unique_lock</code>)</li>
+    <li>✓ Use <code>shared_lock</code> for read-heavy workloads</li>
+    <li>✓ Use atomics for simple counters (no lock contention)</li>
+    <li>✓ Use condition variables for producer-consumer patterns</li>
+    <li>✓ Always pass predicates to <code>cv.wait()</code></li>
+    <li>✓ Keep critical sections small (minimize lock holding time)</li>
+    <li>✓ Acquire multiple locks in consistent order (avoid deadlock)</li>
+    <li>✓ Test with ThreadSanitizer (<code>-fsanitize=thread</code>) and Helgrind</li>
+  </ul>
+</div>
+
+<div class="bad-box">
+  <h3>✗ Don'ts</h3>
+  <ul>
+    <li>✗ Don't hold locks across I/O operations</li>
+    <li>✗ Don't acquire a lock inside a lock (nested locks = deadlock risk)</li>
+    <li>✗ Don't use <code>detach()</code> unless you really know what you're doing</li>
+    <li>✗ Don't capture pointers by reference in thread lambdas (use shared_ptr)</li>
+    <li>✗ Don't ignore race conditions ("it works on my machine")</li>
+    <li>✗ Don't assume atomics are free (still have memory ordering overhead)</li>
+    <li>✗ Don't use <code>volatile</code> for thread synchronization (it doesn't work!)</li>
+  </ul>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">📚</span>Part 11: Quick Reference Table</h2>
+
+<table>
+  <tr>
+    <th>Task</th>
+    <th>Use This</th>
+    <th>Example</th>
+  </tr>
+  <tr>
+    <td>Create a thread</td>
+    <td><code>std::jthread</code></td>
+    <td><code>std::jthread t(my_function)</code></td>
+  </tr>
+  <tr>
+    <td>Protect shared int</td>
+    <td><code>std::atomic&lt;int&gt;</code></td>
+    <td><code>std::atomic&lt;int&gt; counter = 0</code></td>
+  </tr>
+  <tr>
+    <td>Protect shared object</td>
+    <td><code>std::mutex + lock_guard</code></td>
+    <td><code>std::lock_guard lock(mtx)</code></td>
+  </tr>
+  <tr>
+    <td>Many readers, few writers</td>
+    <td><code>std::shared_mutex + shared_lock</code></td>
+    <td><code>std::shared_lock lock(mtx)</code></td>
+  </tr>
+  <tr>
+    <td>Wait for data</td>
+    <td><code>std::condition_variable</code></td>
+    <td><code>cv.wait(lock, [] { return has_data; })</code></td>
+  </tr>
+  <tr>
+    <td>Synchronize N threads</td>
+    <td><code>std::latch</code></td>
+    <td><code>std::latch gate(N); gate.arrive_and_wait()</code></td>
+  </tr>
+  <tr>
+    <td>Stop threads cleanly</td>
+    <td><code>std::stop_token</code> (jthread)</td>
+    <td><code>stoken.stop_requested()</code></td>
+  </tr>
+</table>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">🎓</span>Part 12: Learning Path</h2>
+
+<div class="step-list">
+  <h3>Step-by-step learning (from beginner to confident)</h3>
+  <ol>
+    <li><strong>Week 1:</strong> Understand basic concepts (threads run in parallel, race conditions exist)</li>
+    <li><strong>Week 1:</strong> Create threads with <code>std::jthread</code>, pass arguments, join</li>
+    <li><strong>Week 2:</strong> Protect shared int with <code>std::atomic&lt;int&gt;</code></li>
+    <li><strong>Week 2:</strong> Protect shared objects with <code>std::mutex + lock_guard</code></li>
+    <li><strong>Week 3:</strong> Use <code>std::condition_variable</code> for producer-consumer</li>
+    <li><strong>Week 3:</strong> Use <code>std::shared_mutex</code> for read-heavy workloads</li>
+    <li><strong>Week 4:</strong> Study deadlocks and how to avoid them</li>
+    <li><strong>Week 4:</strong> Build a real project (e.g., thread pool, pipeline)</li>
+  </ol>
+</div>
+
+<!-- ============================================== -->
+<h2><span class="header-emoji">🔗</span>Summary: How It All Fits Together</h2>
+
+<div class="concept-box">
+  <p><strong>Threading is about:</strong></p>
+  <ol>
+    <li><strong>Creating work units:</strong> Use <code>std::jthread</code> to spawn threads</li>
+    <li><strong>Identifying shared data:</strong> Anything accessed by multiple threads</li>
+    <li><strong>Protecting shared data:</strong> Use mutex, atomic, or condition_variable</li>
+    <li><strong>Synchronizing execution:</strong> Coordinate when threads run, wait, and stop</li>
+    <li>  <strong>Testing & debugging:</strong> Use ThreadSanitizer to find races</li>
+  </ol>
+  <p><strong>The golden rule:</strong> <em>Never access shared data without synchronization.</em></p>
+</div>
+
+</body>
+</html>

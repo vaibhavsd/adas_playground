@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ADAS Playground — Equations Reference</title>
+<script>
+  MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root {
+    --bg: #1e1f26;
+    --bg-card: #262832;
+    --border: #383a46;
+    --text: #e6e6ea;
+    --text-dim: #9a9caa;
+    --accent: #6fb3ff;
+    --accent2: #4fae7a;
+    --code-bg: #12131a;
+    --select: #3a5f8a;
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f7f9;
+    --bg-card: #ffffff;
+    --border: #dcdde3;
+    --text: #22232a;
+    --text-dim: #6b6d78;
+    --accent: #1c6fd6;
+    --accent2: #1c8a52;
+    --code-bg: #edeef2;
+    --select: #cfe3fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    padding: 2.2rem 2rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  header h1 {
+    margin: 0 0 0.3rem;
+    font-size: 1.6rem;
+    letter-spacing: 0.02em;
+  }
+  header p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  #theme-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #theme-toggle:hover { border-color: var(--accent); }
+  #theme-toggle .icon { font-size: 1rem; line-height: 1; }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  nav a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  nav a:hover { background: var(--bg-card); }
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 4rem;
+  }
+  section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 4.5rem;
+  }
+  section > h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.2rem;
+    color: var(--accent);
+  }
+  section > .file-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    margin-bottom: 1.1rem;
+  }
+  .card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .card .desc {
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    margin-bottom: 0.7rem;
+  }
+  .card .eq {
+    overflow-x: auto;
+    padding: 0.3rem 0;
+  }
+  code, .inline-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--code-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--accent2);
+  }
+  .where {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .example {
+    margin-top: 1.2rem;
+    padding: 1.3rem 1.4rem;
+    border-top: 1px dashed var(--border);
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .example + .example { margin-top: 1.4rem; }
+  .example h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .example p {
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+  }
+  pre.block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--accent2);
+    margin: 0.8rem 0;
+    line-height: 1.6;
+  }
+  table.datatable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.85rem;
+  }
+  table.datatable th, table.datatable td {
+    text-align: right;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  table.datatable th:first-child, table.datatable td:first-child { text-align: left; }
+  table.datatable th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  table.datatable td { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+  .note {
+    border-left: 3px solid var(--accent);
+    padding: 0.15rem 0 0.15rem 0.9rem;
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+  .result-box {
+    display: inline-block;
+    border: 1px solid var(--text);
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+  }
+  ::selection { background: var(--select); }
+  @media (max-width: 600px) {
+    header, nav, main { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>ADAS Playground — Equations Reference</h1>
+    <p>Every mathematical relationship implemented in <code>include/adas/*.hpp</code>, gathered in one place.</p>
+  </div>
+  <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme">
+    <span class="icon" id="theme-icon">🌙</span>
+    <span id="theme-label">Dark</span>
+  </button>
+</header>
+
+<script>
+  (function () {
+    const root = document.documentElement;
+    const saved = (() => {
+      try { return localStorage.getItem('adas-equations-theme'); } catch (e) { return null; }
+    })();
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = saved || (systemDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', initial);
+
+    window.toggleTheme = function () {
+      const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('adas-equations-theme', next); } catch (e) {}
+      updateButton(next);
+    };
+
+    function updateButton(theme) {
+      const icon = document.getElementById('theme-icon');
+      const label = document.getElementById('theme-label');
+      if (!icon || !label) return;
+      if (theme === 'dark') { icon.textContent = '🌙'; label.textContent = 'Dark'; }
+      else                  { icon.textContent = '☀️'; label.textContent = 'Light'; }
+    }
+    document.addEventListener('DOMContentLoaded', () => updateButton(initial));
+  })();
+</script>
+
+<nav>
+  <a href="#geometry">geometry.hpp</a>
+  <a href="#vehicle">vehicle.hpp</a>
+  <a href="#controller">controller.hpp</a>
+  <a href="#planner">planner.hpp</a>
+  <a href="#tracker">tracker.hpp</a>
+  <a href="#world">world.hpp</a>
+  <a href="#render">render.hpp</a>
+</nav>
+
+<main>
+
+<section id="geometry">
+  <h2>geometry.hpp</h2>
+  <span class="file-tag">Day 1 — vector/matrix math foundation</span>
+
+  <div class="card">
+    <h3>2D vector dot &amp; cross product</h3>
+    <div class="desc">Cross product in 2D returns a scalar: positive if the second vector is counter-clockwise of the first.</div>
+    <div class="eq">$$ \mathbf{a}\cdot\mathbf{b} = a_x b_x + a_y b_y \qquad \mathbf{a}\times\mathbf{b} = a_x b_y - a_y b_x $$</div>
+    <div class="where">Vec2::dot, Vec2::cross</div>
+  </div>
+
+  <div class="card">
+    <h3>Vector rotation</h3>
+    <div class="desc">Standard 2D rotation matrix applied to a vector by angle $a$.</div>
+    <div class="eq">$$ \begin{aligned} x' &= x\cos a - y\sin a \\ y' &= x\sin a + y\cos a \end{aligned} $$</div>
+    <div class="where">Vec2::rotated</div>
+  </div>
+
+  <div class="card">
+    <h3>Norm, normalization, angle</h3>
+    <div class="eq">$$ \lVert \mathbf{v} \rVert = \sqrt{x^2+y^2} \qquad \hat{\mathbf{v}} = \frac{\mathbf{v}}{\lVert \mathbf{v} \rVert} \qquad \theta = \operatorname{atan2}(y, x) $$</div>
+    <div class="where">Vec2::norm, Vec2::normalized, Vec2::angle</div>
+  </div>
+
+  <div class="card">
+    <h3>Point-to-segment distance</h3>
+    <div class="desc">Project point $p$ onto segment $ab$, clamp the parameter $t$ to $[0,1]$, then measure distance to the clamped point.</div>
+    <div class="eq">$$ t = \operatorname{clamp}\!\left(\frac{(\mathbf{p}-\mathbf{a})\cdot(\mathbf{b}-\mathbf{a})}{\lVert \mathbf{b}-\mathbf{a} \rVert^2},\ 0,\ 1\right) \qquad d = \lVert \mathbf{p} - (\mathbf{a} + t(\mathbf{b}-\mathbf{a})) \rVert $$</div>
+    <div class="where">distance_to_segment</div>
+  </div>
+
+  <div class="card">
+    <h3>Angle wrapping</h3>
+    <div class="desc">Keeps an angle in $[-\pi, \pi]$ by repeatedly adding/subtracting $2\pi$.</div>
+    <div class="eq">$$ a_{\text{wrapped}} \in [-\pi, \pi], \quad a_{\text{wrapped}} = a - 2\pi k \ \text{for integer } k $$</div>
+    <div class="where">wrap_angle</div>
+  </div>
+
+  <div class="card">
+    <h3>Degrees → radians</h3>
+    <div class="eq">$$ \text{rad} = \text{deg} \cdot \frac{\pi}{180} $$</div>
+    <div class="where">deg2rad</div>
+  </div>
+
+  <div class="card">
+    <h3>World ↔ ego frame transforms</h3>
+    <div class="desc">Ego frame: $x$ forward, $y$ left, origin at the car, heading $\psi$ (yaw).</div>
+    <div class="eq">$$ \mathbf{p}_{\text{ego}} = R(-\psi)\,(\mathbf{p}_{\text{world}} - \mathbf{p}_{\text{car}}) \qquad \mathbf{p}_{\text{world}} = R(\psi)\,\mathbf{p}_{\text{ego}} + \mathbf{p}_{\text{car}} $$</div>
+    <div class="where">to_ego_frame, to_world_frame</div>
+  </div>
+
+  <div class="card">
+    <h3>2×2 matrix multiplication</h3>
+    <div class="desc">Used for Kalman filter state-transition / covariance propagation.</div>
+    <div class="eq">$$ \begin{pmatrix} a & b \\ c & d \end{pmatrix} \begin{pmatrix} a' & b' \\ c' & d' \end{pmatrix} = \begin{pmatrix} aa'+bc' & ab'+bd' \\ ca'+dc' & cb'+dd' \end{pmatrix} $$</div>
+    <div class="where">Mat2::operator*</div>
+  </div>
+</section>
+
+<section id="vehicle">
+  <h2>vehicle.hpp</h2>
+  <span class="file-tag">Day 2 — kinematic bicycle model (the plant)</span>
+
+  <div class="card">
+    <h3>Kinematic bicycle model</h3>
+    <div class="desc">No slip, point mass, simplified steering. $L$ = wheelbase, $\delta$ = steering angle, $a$ = acceleration, $v$ = speed, $\psi$ = yaw.</div>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      \dot{x} &= v \cos\psi \\
+      \dot{y} &= v \sin\psi \\
+      \dot{\psi} &= \frac{v}{L}\tan\delta \\
+      \dot{v} &= a
+      \end{aligned}
+      $$
+    </div>
+    <div class="where">Vehicle::step</div>
+  </div>
+
+  <div class="card">
+    <h3>Command &amp; state clamping</h3>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      a &\in [-a_{\max},\ a_{\max}] \\
+      \delta &\in [-\delta_{\max},\ \delta_{\max}] \\
+      v &\in [0,\ v_{\max}]
+      \end{aligned}
+      $$
+    </div>
+    <div class="where">Vehicle::step (std::clamp calls)</div>
+  </div>
+</section>
+
+<section id="controller">
+  <h2>controller.hpp</h2>
+  <span class="file-tag">Day 8 — pure pursuit (lateral) + PID (longitudinal)</span>
+
+  <div class="card">
+    <h3>PID controller</h3>
+    <div class="desc">Classic proportional–integral–derivative loop tracking a speed setpoint. Integral term is clamped for anti-windup.</div>
+    <div class="eq">$$ u(t) = K_p\, e(t) + K_i \int e(t)\,dt + K_d\,\frac{de(t)}{dt} $$</div>
+    <div class="desc">Discretized in code (backward-difference derivative):</div>
+    <div class="eq">$$ u_k = K_p e_k + K_i I_k + K_d\,\frac{e_k - e_{k-1}}{\Delta t}, \qquad I_k = \operatorname{clamp}\!\left(I_{k-1} + e_k \Delta t,\ -I_{\lim},\ I_{\lim}\right) $$</div>
+    <div class="where">PID::step</div>
+  </div>
+
+  <div class="card">
+    <h3>Pure pursuit — lookahead distance</h3>
+    <div class="eq">$$ L_d = \max(L_{d,\min},\ k \cdot v) $$</div>
+    <div class="where">PurePursuit::steer</div>
+  </div>
+
+  <div class="card">
+    <h3>Pure pursuit — steering angle</h3>
+    <div class="desc">Inverse bicycle-model geometry: $\alpha$ = angle (in ego frame) to the lookahead target, $L$ = wheelbase.</div>
+    <div class="eq">$$ \delta = \operatorname{atan2}\!\left(2L\sin\alpha,\ L_d\right) $$</div>
+    <div class="where">PurePursuit::steer</div>
+  </div>
+</section>
+
+<section id="planner">
+  <h2>planner.hpp</h2>
+  <span class="file-tag">Day 7 — lattice planner: candidate paths, cost, prediction</span>
+
+  <div class="card">
+    <h3>Lateral blend (candidate path shaping)</h3>
+    <div class="desc">Smoothly blends from the current lateral offset $\text{lat}_0$ to a target offset over a fixed blend distance, so paths are drivable rather than a step change.</div>
+    <div class="eq">$$ \text{blend} = \operatorname{clamp}\!\left(\frac{k \cdot ds \cdot \text{spacing}}{\text{blend}_m},\ 0,\ 1\right), \qquad \text{lat}(k) = \operatorname{lerp}(\text{lat}_0,\ \text{off},\ \text{blend}) $$</div>
+    <div class="where">LatticePlanner::build_and_score</div>
+
+    <div class="example">
+      <h4>1. <code>ds</code></h4>
+      <p><code>ds</code> is the distance between successive path samples.</p>
+      <p>For example:</p>
+      <pre class="block">point 0 ---- 0.5m ---- point 1 ---- 0.5m ---- point 2</pre>
+      <p>Then:</p>
+      <pre class="block">ds = 0.5 m</pre>
+      <p>So:</p>
+      <div class="eq">$$ k \cdot ds $$</div>
+      <p>gives approximately <strong>how far along the path we are</strong>. For example:</p>
+      <table class="datatable">
+        <thead><tr><th>k</th><th>ds</th><th>distance</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>0.5 m</td><td>0 m</td></tr>
+          <tr><td>1</td><td>0.5 m</td><td>0.5 m</td></tr>
+          <tr><td>2</td><td>0.5 m</td><td>1.0 m</td></tr>
+          <tr><td>3</td><td>0.5 m</td><td>1.5 m</td></tr>
+          <tr><td>4</td><td>0.5 m</td><td>2.0 m</td></tr>
+        </tbody>
+      </table>
+      <p>The important conceptual part is:</p>
+      <pre class="block">k &times; ds &times; spacing</pre>
+      <p>represents <strong>progress through the blend</strong>.</p>
+    </div>
+
+    <div class="example">
+      <h4>2. <code>blend_m</code></h4>
+      <p><code>blend_m</code> is the <strong>total distance over which you want the transition to happen</strong>.</p>
+      <p>Suppose:</p>
+      <pre class="block">blend_m = 10 m</pre>
+      <p>You want:</p>
+      <pre class="block">current offset = 0 m
+target offset  = 2 m</pre>
+      <p>and you want to transition from 0 &rarr; 2 m over 10 m. Conceptually:</p>
+      <pre class="block">          10 m
+&lt;-------------------------------&gt;
+
+offset
+  2m |                        &#8226;
+     |                    &#8226;
+     |                &#8226;
+     |            &#8226;
+     |        &#8226;
+  0m |&#8226;
+     +-------------------------------&gt; distance
+     0                          10m</pre>
+      <p>The fraction of the transition completed is:</p>
+      <div class="eq">$$ \text{blend} = \frac{\text{distance traveled}}{\text{blend distance}} $$</div>
+    </div>
+
+    <div class="example">
+      <h4>Put everything together</h4>
+      <p>Imagine:</p>
+      <pre class="block">lat<sub>0</sub>  = 0 m
+off     = 2 m
+blend_m = 10 m</pre>
+      <p>As the vehicle/path progresses:</p>
+      <table class="datatable">
+        <thead><tr><th>Distance into blend</th><th>blend</th><th>lat(k)</th></tr></thead>
+        <tbody>
+          <tr><td>0 m</td><td>0.0</td><td>0 m</td></tr>
+          <tr><td>2 m</td><td>0.2</td><td>0.4 m</td></tr>
+          <tr><td>4 m</td><td>0.4</td><td>0.8 m</td></tr>
+          <tr><td>6 m</td><td>0.6</td><td>1.2 m</td></tr>
+          <tr><td>8 m</td><td>0.8</td><td>1.6 m</td></tr>
+          <tr><td>10 m</td><td>1.0</td><td>2.0 m</td></tr>
+          <tr><td>12 m</td><td>1.0</td><td>2.0 m</td></tr>
+        </tbody>
+      </table>
+      <p>Past <code>blend_m</code>, the clamp holds <code>blend</code> at 1.0, so <code>lat(k)</code> stays pinned at the target offset — the transition doesn't overshoot.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Path cost function</h3>
+    <div class="desc">Total cost is a weighted sum of lateral-offset penalty and clearance penalty (plus a large fixed penalty for going off-track or colliding).</div>
+    <div class="eq">
+      $$ C = w_{\text{offset}} \cdot \text{off}^2 \;+\; \sum_k P_{\text{clearance}}(k) \;+\; \begin{cases} 10^6 & \text{if off-track} \\ 0 & \text{otherwise} \end{cases} $$
+    </div>
+    <div class="eq">
+      $$ P_{\text{clearance}} = \begin{cases} 500 & \text{clearance} < 0 \\ w_{\text{clr}} \cdot (\text{safe} - \text{clr})^2 & 0 \le \text{clearance} < \text{safe} \\ 0 & \text{clearance} \ge \text{safe} \end{cases} $$
+    </div>
+    <div class="where">LatticePlanner::build_and_score</div>
+  </div>
+
+  <div class="card">
+    <h3>Target speed from clearance</h3>
+    <div class="eq">$$ r = \operatorname{clamp}\!\left(\frac{\text{clearance}_{\min}}{\text{clearance}_{\text{safe}}},\ 0,\ 1\right), \qquad v_{\text{target}} = \operatorname{lerp}(v_{\text{crawl}},\ v_{\text{cruise}},\ r) $$</div>
+    <div class="where">LatticePlanner::build_and_score</div>
+  </div>
+
+  <div class="card">
+    <h3>Obstacle motion prediction</h3>
+    <div class="desc">Two modes: straight-line extrapolation, or road-aware sliding along the centerline (keeping the same lateral offset).</div>
+    <div class="eq">
+      $$
+      \mathbf{p}_{\text{future}}(t) =
+      \begin{cases}
+      \mathbf{p}_0 + \mathbf{v}_0\, t & \text{straight-line} \\[4pt]
+      \text{centerline}(s_0 + \frac{v_{\parallel}\, t}{\text{spacing}}) + \hat{\mathbf{n}} \cdot \text{lat}_0 & \text{road-aware}
+      \end{cases}
+      $$
+    </div>
+    <div class="where">LatticePlanner::build_and_score (predict lambda)</div>
+
+    <div class="example">
+      <h4>9. Full numerical example</h4>
+      <p>Suppose:</p>
+      <pre class="block">current longitudinal position:
+s<sub>0</sub> = 100
+
+lateral offset:
+lat<sub>0</sub> = 2 m
+
+speed along road:
+v<sub>&#8741;</sub> = 10 m/s
+
+prediction time:
+t = 2 s</pre>
+      <p>The obstacle travels:</p>
+      <div class="eq">$$ 10 \times 2 = 20m $$</div>
+      <p>So:</p>
+      <div class="eq">$$ s_{\text{future}} = 100 + 20 = 120m $$</div>
+      <p>Suppose:</p>
+      <pre class="block">centerline(120) = (50, 30)</pre>
+      <p>and the normal vector is:</p>
+      <div class="eq">$$ \hat{n} = (0.8, 0.6) $$</div>
+      <p>The lateral displacement is:</p>
+      <div class="eq">
+        $$
+        \begin{aligned}
+        \hat{n}\,\text{lat}_0 &= (0.8, 0.6)(2) \\
+        &= (1.6, 1.2)
+        \end{aligned}
+        $$
+      </div>
+      <p>Therefore:</p>
+      <div class="eq">$$ p_{\text{future}} = (50, 30) + (1.6, 1.2) $$</div>
+      <div class="eq"><span class="result-box">\( p_{\text{future}} = (51.6,\ 31.2) \)</span></div>
+      <p>So the prediction says:</p>
+      <div class="note">In 2 seconds, the obstacle will be 20 m farther along the road while remaining 2 m from the centerline.</div>
+    </div>
+  </div>
+</section>
+
+<section id="tracker">
+  <h2>tracker.hpp</h2>
+  <span class="file-tag">Day 6 — Kalman filter (constant-velocity, per-axis) &amp; data association</span>
+
+  <div class="card">
+    <h3>Kalman filter — predict step</h3>
+    <div class="desc">State $x = [\text{position}, \text{velocity}]^T$, constant-velocity model. $F$ is the state-transition matrix, $Q$ is process noise.</div>
+    <div class="eq">
+      $$ \mathbf{x} = F\mathbf{x}, \qquad P = FPF^T + Q, \qquad F = \begin{pmatrix} 1 & \Delta t \\ 0 & 1 \end{pmatrix} $$
+    </div>
+    <div class="where">Kalman1D::predict</div>
+  </div>
+
+  <div class="card">
+    <h3>Discrete white-noise-acceleration process noise</h3>
+    <div class="eq">
+      $$ Q = q \begin{pmatrix} \Delta t^4/4 & \Delta t^3/2 \\ \Delta t^3/2 & \Delta t^2 \end{pmatrix} $$
+    </div>
+    <div class="where">Kalman1D::predict</div>
+  </div>
+
+  <div class="card">
+    <h3>Kalman filter — update step (generic)</h3>
+    <div class="desc">$H$ selects which state component is measured, $R$ is measurement noise, $K$ is the Kalman gain.</div>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      y &= z - H\mathbf{x} \\
+      S &= HPH^T + R \\
+      K &= PH^T S^{-1} \\
+      \mathbf{x} &= \mathbf{x} + Ky \\
+      P &= (I - KH)P
+      \end{aligned}
+      $$
+    </div>
+    <div class="desc">With a 2-state filter and a scalar measurement, $S$ is a scalar and "matrix inverse" is just division — hence no linear algebra library needed.</div>
+    <div class="where">Kalman1D::update_position ($H=[1\ 0]$), Kalman1D::update_velocity ($H=[0\ 1]$)</div>
+  </div>
+
+  <div class="card">
+    <h3>Position uncertainty (σ)</h3>
+    <div class="eq">$$ \sigma_{\text{pos}} = \sqrt{\tfrac{1}{2}\left(\operatorname{Var}(x) + \operatorname{Var}(y)\right)} $$</div>
+    <div class="where">Track::pos_sigma</div>
+  </div>
+
+  <div class="card">
+    <h3>Association gate</h3>
+    <div class="desc">The acceptance radius for matching a new detection to an existing track grows with the sensor's own measurement uncertainty $\sigma_{\text{det}}$.</div>
+    <div class="eq">$$ \text{gate} = \text{gate}_{m} + 2\sigma_{\text{det}} $$</div>
+    <div class="where">Tracker::update</div>
+  </div>
+</section>
+
+<section id="world">
+  <h2>world.hpp</h2>
+  <span class="file-tag">Day 4 — ground-truth simulation, course geometry</span>
+
+  <div class="card">
+    <h3>Course parameterization &amp; interpolation</h3>
+    <div class="desc">Arc-length parameter $s$ is a fractional waypoint index; linear interpolation between neighboring waypoints.</div>
+    <div class="eq">$$ \mathbf{p}(s) = \operatorname{lerp}\!\big(\mathbf{p}_{\lfloor s \rfloor},\ \mathbf{p}_{\lfloor s \rfloor + 1},\ s - \lfloor s \rfloor\big) $$</div>
+    <div class="where">Course::point_at</div>
+  </div>
+
+  <div class="card">
+    <h3>Tangent, normal, heading</h3>
+    <div class="eq">
+      $$ \hat{\mathbf{t}}(s) = \widehat{\mathbf{p}(s+\tfrac12) - \mathbf{p}(s)}, \qquad \hat{\mathbf{n}}(s) = R(\pi/2)\,\hat{\mathbf{t}}(s), \qquad \psi(s) = \angle \hat{\mathbf{t}}(s) $$
+    </div>
+    <div class="where">Course::tangent_at, normal_at, heading_at</div>
+  </div>
+
+  <div class="card">
+    <h3>Signed lateral offset from centerline</h3>
+    <div class="desc">Positive = left of the direction of travel (via the 2D cross product).</div>
+    <div class="eq">$$ \text{lat}(\mathbf{p}) = \hat{\mathbf{t}}(i) \times (\mathbf{p} - \mathbf{p}_i), \qquad i = \arg\min_j \lVert \mathbf{p}_j - \mathbf{p} \rVert $$</div>
+    <div class="where">Course::lateral_offset, Course::nearest_index</div>
+  </div>
+
+  <div class="card">
+    <h3>Toy adaptive cruise control (traffic)</h3>
+    <div class="desc">Each actor matches the speed of whoever is directly ahead in its lane, with finite acceleration/deceleration.</div>
+    <div class="eq">
+      $$
+      v_{\text{target}} = \min_{\text{leaders}} v_{\text{leader}}, \qquad
+      v_{\text{cur}}' = \operatorname{clamp}\big(v_{\text{target}},\ v_{\text{cur}} - a_{\max}\Delta t,\ v_{\text{cur}} + a_{\max}\Delta t\big)
+      $$
+    </div>
+    <div class="where">World::step</div>
+  </div>
+
+  <div class="card">
+    <h3>Crash detection</h3>
+    <div class="eq">
+      $$
+      \text{off-track: } |\text{lat}(\mathbf{p}_{\text{ego}})| + r_{\text{ego}} > w_{\text{half}}
+      \qquad\qquad
+      \text{collision: } \lVert \mathbf{p}_{\text{obs}} - \mathbf{p}_{\text{ego}} \rVert < r_{\text{obs}} + r_{\text{ego}}
+      $$
+    </div>
+    <div class="where">World::step</div>
+  </div>
+</section>
+
+<section id="render">
+  <h2>render.hpp</h2>
+  <span class="file-tag">Day 9 — world-to-pixel projection &amp; color blending</span>
+
+  <div class="card">
+    <h3>World → pixel projection</h3>
+    <div class="desc">Maps a world-frame point into the terminal's half-block pixel grid ($w \times ph$), flipping $y$ since screen rows increase downward.</div>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      \text{col} &= \operatorname{round}\!\left(\frac{p_x - x_{\min}}{x_{\max}-x_{\min}}(w-1)\right) \\[4pt]
+      \text{row} &= \operatorname{round}\!\left((ph-1) - \frac{p_y - y_{\min}}{y_{\max}-y_{\min}}(ph-1)\right)
+      \end{aligned}
+      $$
+    </div>
+    <div class="where">Renderer::to_pixel, Renderer::to_world (inverse)</div>
+  </div>
+
+  <div class="card">
+    <h3>Linear color blend</h3>
+    <div class="eq">$$ c = c_1 + (c_2 - c_1)\,t, \qquad t \in [0,1] $$</div>
+    <div class="where">mix(RGB, RGB, double)</div>
+  </div>
+</section>
+
+</main>
+
+</body>
+</html>
