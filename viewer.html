@@ -159,7 +159,9 @@
         <span><span class="sw" style="background:#f6d24a"></span>fused track (confirmed)</span>
       </div>
       <div class="hint" style="margin-top:6px">World-frame coordinates in metres (grid lines every
-      20m × 15m) — <code>sense::to_detection()</code> output, before any tracking. Bright dots are
+      20m × 15m), with the driving track itself outlined faintly in the background — same course
+      geometry as the main view, so it's clear which detections are on the road vs. off it.
+      <code>sense::to_detection()</code> output, before any tracking. Bright dots are
       this cycle; faint dots are the last ~1s, fading out, so you can see which way things are
       moving. Raw detections have no ID from cycle to cycle, so their trail is a fading cloud, not
       a line. Fused tracks (yellow rings) <em>do</em> have a stable ID, so theirs draws as a real
@@ -472,19 +474,24 @@ function ovalPts(rx, ry, n) {
 }
 const CENTRE = ovalPts(40, 24, 400), HALF_W = 5;
 
-function strokeOval(offset, style, width, dash) {
-  ctx.beginPath();
+// Generic oval-stroking so both the main track view (cv/sx/sy) and the
+// raw-detections scatter (detCv/dsx/dsy) can draw the same course geometry
+// through their own pixel mapping — the ellipse-normal math is purely in
+// world metres and doesn't care which canvas it ends up on.
+function strokeOvalOn(c, xMap, yMap, offset, style, width, dash) {
+  c.beginPath();
   CENTRE.forEach(([x,y], k) => {
     const n = Math.hypot(x/1600, y/576) || 1;           // outward normal of the ellipse
     const nx = (x/1600)/n, ny = (y/576)/n;
     const px = x + nx*offset, py = y + ny*offset;
-    k ? ctx.lineTo(sx(px), sy(py)) : ctx.moveTo(sx(px), sy(py));
+    k ? c.lineTo(xMap(px), yMap(py)) : c.moveTo(xMap(px), yMap(py));
   });
-  ctx.closePath();
-  ctx.setLineDash(dash || []);
-  ctx.strokeStyle = style; ctx.lineWidth = width; ctx.stroke();
-  ctx.setLineDash([]);
+  c.closePath();
+  c.setLineDash(dash || []);
+  c.strokeStyle = style; c.lineWidth = width; c.stroke();
+  c.setLineDash([]);
 }
+function strokeOval(offset, style, width, dash) { strokeOvalOn(ctx, sx, sy, offset, style, width, dash); }
 
 function drawTrack() {
   ctx.fillStyle = '#16241c'; ctx.fillRect(0,0,cv.width,cv.height);
@@ -535,6 +542,14 @@ function drawDetections(f) {
   const fit = fitCanvas(detCv);
   dctx = fit.ctx; detW = fit.w; detH = fit.h;
   dctx.fillStyle = '#0e1015'; dctx.fillRect(0, 0, detW, detH);
+
+  // The driving track itself — same course geometry as the main view (cv),
+  // just stroked through this panel's own pixel mapping (dsx/dsy). Kept as
+  // thin outlines rather than a filled asphalt band so it reads as spatial
+  // context without competing with the sensor-coloured dots on top of it.
+  strokeOvalOn(dctx, dsx, dsy,  HALF_W, 'rgba(216,218,224,.35)', 1);
+  strokeOvalOn(dctx, dsx, dsy, -HALF_W, 'rgba(216,218,224,.35)', 1);
+  strokeOvalOn(dctx, dsx, dsy, 0, 'rgba(166,140,66,.4)', 1, [8, 8]);
 
   // Coordinate grid, in metres (world frame) — same axes sense::to_detection() works in.
   dctx.font = '9px ui-monospace,monospace'; dctx.fillStyle = 'rgba(223,229,239,.45)';
@@ -1000,16 +1015,24 @@ window.addEventListener('resize', () => {
   resizeT = setTimeout(() => { if (frames.length) render(); }, 120);
 });
 
+function loadFramesFromText(text) {
+  frames = text.split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+  i = 0; document.getElementById('scrub').max = Math.max(frames.length - 1, 0);
+  buildSeries();
+  playing = frames.length > 0; render();
+}
+
 document.getElementById('file').addEventListener('change', e => {
   const fr = new FileReader();
-  fr.onload = () => {
-    frames = fr.result.split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
-    i = 0; document.getElementById('scrub').max = Math.max(frames.length - 1, 0);
-    buildSeries();
-    playing = frames.length > 0; render();
-  };
+  fr.onload = () => loadFramesFromText(fr.result);
   fr.readAsText(e.target.files[0]);
 });
+
+// Default to run.jsonl next to this file when served over http(s); file://
+// pages can't fetch local files due to browser CORS restrictions, so this
+// silently no-ops there and the user falls back to the file picker.
+fetch('run.jsonl').then(r => r.ok ? r.text() : Promise.reject())
+  .then(loadFramesFromText).catch(() => {});
 document.getElementById('play').onclick = () => { playing = !playing;
   document.getElementById('play').textContent = playing ? '❚❚ pause' : '▶ play'; };
 document.getElementById('next').onclick = () => { playing = false; i = Math.min(i+1, frames.length-1); render(); };

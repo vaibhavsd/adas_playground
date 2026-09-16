@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>geometry.hpp — Explainer</title>
+<script>
+  MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root {
+    --bg: #1e1f26;
+    --bg-card: #262832;
+    --border: #383a46;
+    --text: #e6e6ea;
+    --text-dim: #9a9caa;
+    --accent: #6fb3ff;
+    --accent2: #4fae7a;
+    --code-bg: #12131a;
+    --select: #3a5f8a;
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f7f9;
+    --bg-card: #ffffff;
+    --border: #dcdde3;
+    --text: #22232a;
+    --text-dim: #6b6d78;
+    --accent: #1c6fd6;
+    --accent2: #1c8a52;
+    --code-bg: #edeef2;
+    --select: #cfe3fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    padding: 2.2rem 2rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  header h1 {
+    margin: 0 0 0.3rem;
+    font-size: 1.6rem;
+    letter-spacing: 0.02em;
+  }
+  header p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  #theme-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #theme-toggle:hover { border-color: var(--accent); }
+  #theme-toggle .icon { font-size: 1rem; line-height: 1; }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  nav a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  nav a:hover { background: var(--bg-card); }
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 4rem;
+  }
+  section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 4.5rem;
+  }
+  section > h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.2rem;
+    color: var(--accent);
+  }
+  section > .file-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    display: block;
+  }
+  section > .intro {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-bottom: 1.2rem;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    margin-bottom: 1.1rem;
+  }
+  .card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .card .desc {
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    margin-bottom: 0.7rem;
+  }
+  .card .eq {
+    overflow-x: auto;
+    padding: 0.3rem 0;
+  }
+  code, .inline-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--code-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--accent2);
+  }
+  .where {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .example {
+    margin-top: 1.2rem;
+    padding: 1.3rem 1.4rem;
+    border-top: 1px dashed var(--border);
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .example + .example { margin-top: 1.4rem; }
+  .example h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .example p {
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+  }
+  pre.block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--accent2);
+    margin: 0.8rem 0;
+    line-height: 1.6;
+  }
+  table.datatable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.85rem;
+  }
+  table.datatable th, table.datatable td {
+    text-align: right;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  table.datatable th:first-child, table.datatable td:first-child { text-align: left; }
+  table.datatable th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  table.datatable td { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+  .note {
+    border-left: 3px solid var(--accent);
+    padding: 0.15rem 0 0.15rem 0.9rem;
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+  .figrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 0.8rem 0;
+  }
+  .figrow figure {
+    flex: 1 1 300px;
+    margin: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 0.9rem 0.6rem;
+  }
+  .figrow figure svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    color: var(--text);
+  }
+  .figrow figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .svg-accent { color: var(--accent); }
+  .steps { margin: 0.6rem 0 0.6rem 1.2rem; padding: 0; color: var(--text-dim); font-size: 0.9rem; }
+  .steps li { margin-bottom: 0.35rem; }
+  .steps strong { color: var(--text); }
+  ::selection { background: var(--select); }
+  @media (max-width: 600px) {
+    header, nav, main { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>geometry.hpp — Explainer</h1>
+    <p>Walkthrough of <code>adas::geo</code> — frame transforms and point-to-segment distance, the two pieces of math every other module leans on.</p>
+  </div>
+  <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme">
+    <span class="icon" id="theme-icon">🌙</span>
+    <span id="theme-label">Dark</span>
+  </button>
+</header>
+
+<script>
+  (function () {
+    const root = document.documentElement;
+    const saved = (() => {
+      try { return localStorage.getItem('adas-geometry-theme'); } catch (e) { return null; }
+    })();
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = saved || (systemDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', initial);
+
+    window.toggleTheme = function () {
+      const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('adas-geometry-theme', next); } catch (e) {}
+      updateButton(next);
+    };
+
+    function updateButton(theme) {
+      const icon = document.getElementById('theme-icon');
+      const label = document.getElementById('theme-label');
+      if (!icon || !label) return;
+      if (theme === 'dark') { icon.textContent = '🌙'; label.textContent = 'Dark'; }
+      else                  { icon.textContent = '☀️'; label.textContent = 'Light'; }
+    }
+    document.addEventListener('DOMContentLoaded', () => updateButton(initial));
+  })();
+</script>
+
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#frames">World frame vs. ego frame</a>
+  <a href="#to-ego-frame">to_ego_frame</a>
+  <a href="#to-world-frame">to_world_frame</a>
+  <a href="#roundtrip">Worked examples</a>
+  <a href="#distance-to-segment">distance_to_segment</a>
+  <a href="#why-segment">Why a segment, not a point</a>
+</nav>
+
+<main>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <span class="file-tag">Day 1 — geometry.hpp — "Every ADAS stack is secretly a geometry library with opinions."</span>
+  <div class="card">
+    <h3>What these three functions are for</h3>
+    <div class="desc">
+      Three small free functions, all defined in the first ~100 lines of the whole codebase, and
+      all still doing work on the very last day (Day 10, <code>main.cpp</code>). Between them they
+      answer two questions every other module needs answered constantly:
+    </div>
+    <ol class="steps">
+      <li><strong><code>to_ego_frame</code> / <code>to_world_frame</code></strong> — "where is that point, <em>relative to the car</em>?" and its inverse, "I have a point relative to the car, where is that in the world?" Sensors, the controller, and the renderer all ask one of these dozens of times per cycle.</li>
+      <li><strong><code>distance_to_segment</code></strong> — "how close does object X get to this piece of the planned path?" — the one line of math the planner's entire collision check is built on.</li>
+    </ol>
+    <div class="desc">
+      None of the three do anything exotic — a rotation, a subtraction, a clamp — but seeing where
+      they're called (six files, listed below) is the fastest way to understand how the whole stack
+      shares one small geometric vocabulary instead of every module inventing its own.
+    </div>
+    <div class="where">include/adas/geometry.hpp — namespace adas::geo</div>
+  </div>
+</section>
+
+<section id="frames">
+  <h2>World frame vs. ego frame</h2>
+  <span class="file-tag">The two coordinate systems everything in this repo is expressed in</span>
+  <div class="card">
+    <h3>Two frames, one convention each</h3>
+    <div class="desc">
+      <strong>World frame</strong>: fixed, global — the track's own coordinates. Every
+      <code>Obstacle</code>, every <code>Pose</code>, everything in a recorded <code>run.jsonl</code>
+      frame is in world frame.
+    </div>
+    <div class="desc">
+      <strong>Ego frame</strong>: attached to the car, moves and rotates with it. Origin at the
+      car's position; <strong>+x points where the car is facing</strong> (forward), <strong>+y
+      points left</strong>. A point at ego-frame <code>(5, 0)</code> is always "5 m directly ahead
+      of the car," no matter which way the car is pointed in the world.
+    </div>
+    <div class="figrow">
+      <figure>
+        <svg viewBox="0 0 380 260" role="img" aria-label="World frame: fixed axes from the track's own origin; the car sits at (10,10) facing world +y (yaw 90 degrees), with a target point at (10,15) directly north of it.">
+          <defs>
+            <marker id="arrW" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <!-- world axes, fixed to the track -->
+          <line x1="70" y1="230" x2="326" y2="230" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrW)"/>
+          <line x1="70" y1="230" x2="70" y2="24"  stroke="currentColor" stroke-width="1.5" marker-end="url(#arrW)"/>
+          <text x="336" y="234" font-size="13">x</text>
+          <text x="58" y="18" font-size="13">y</text>
+          <circle cx="70" cy="230" r="2.5" fill="currentColor"/>
+          <text x="46" y="248" font-size="11" fill="currentColor" opacity="0.75">(0,0)</text>
+
+          <!-- ego, as a pose *within* the world frame: triangle nose = heading -->
+          <g class="svg-accent">
+            <line x1="170" y1="130" x2="170" y2="80" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="176" y="108" font-size="11">&#916; = (0, 5)</text>
+            <circle cx="170" cy="80" r="4" fill="currentColor"/>
+            <text x="179" y="76" font-size="12">world_pt (10, 15)</text>
+          </g>
+          <polygon points="170,113 158,138 182,138" fill="currentColor" opacity="0.85"/>
+          <line x1="170" y1="130" x2="170" y2="100" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrW)" opacity="0.6"/>
+          <line x1="170" y1="130" x2="140" y2="130" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrW)" opacity="0.6"/>
+          <text x="98" y="164" font-size="12">ego (10,10), yaw 90&#176;</text>
+        </svg>
+        <figcaption>World frame — fixed to the track. The car's own forward/left axes (faint arrows) are just <em>one more pose</em> plotted in it.</figcaption>
+      </figure>
+      <figure>
+        <svg viewBox="0 0 460 200" role="img" aria-label="Ego frame: origin at the car, +x forward, +y left. The same target point now sits at (5,0), five metres directly ahead, regardless of the car's heading in the world.">
+          <defs>
+            <marker id="arrE" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <!-- ego axes: this diagram is drawn *from the car's point of view*, so it never rotates -->
+          <line x1="90" y1="140" x2="326" y2="140" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrE)"/>
+          <line x1="90" y1="140" x2="90"  y2="24"  stroke="currentColor" stroke-width="1.5" marker-end="url(#arrE)"/>
+          <text x="336" y="144" font-size="13">x (forward)</text>
+          <text x="66" y="18" font-size="13">y (left)</text>
+          <polygon points="108,140 82,130 82,150" fill="currentColor" opacity="0.85"/>
+          <text x="70" y="166" font-size="12">ego (0,0)</text>
+
+          <g class="svg-accent">
+            <line x1="90" y1="140" x2="140" y2="140" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="97" y="124" font-size="11">5 m ahead</text>
+            <circle cx="140" cy="140" r="4" fill="currentColor"/>
+            <text x="148" y="160" font-size="12">(5, 0)</text>
+          </g>
+        </svg>
+        <figcaption>Ego frame — attached to the car, drawn from the car's own point of view. The same physical point is now simply "5 m ahead," full stop.</figcaption>
+      </figure>
+    </div>
+    <div class="desc">
+      Both pictures show the <em>same</em> physical situation — the numbers match the worked
+      example below. Why bother with a second frame at all? Because "is that obstacle in front of
+      me, within my field of view, within braking distance" are all questions that are
+      <em>trivial</em> in ego frame (check <code>rel.x</code>, check <code>rel.norm()</code>, check
+      <code>rel.angle()</code>) and comparatively awkward in world frame, where you'd have to
+      subtract off the car's heading by hand every single time.
+    </div>
+    <div class="where">Pose struct — geometry.hpp:107 (pos + yaw, yaw in radians, 0 = +x, CCW positive)</div>
+  </div>
+</section>
+
+<section id="to-ego-frame">
+  <h2>to_ego_frame(world_pt, ego)</h2>
+  <span class="file-tag">"Where is this world point, relative to the car?"</span>
+
+  <div class="card">
+    <h3>The math</h3>
+    <div class="desc">
+      Two steps: translate so the car is at the origin, then rotate by <em>minus</em> the car's
+      heading so "forward" lines up with the ego-frame +x axis.
+    </div>
+    <div class="eq">
+      $$ p_{\text{ego}} = R(-\psi)\,(p_{\text{world}} - p_{\text{ego,pos}}) $$
+    </div>
+    <div class="desc">where $\psi$ is <code>ego.yaw</code> and the rotation matrix is the standard 2D one:</div>
+    <div class="eq">
+      $$ R(\theta) = \begin{pmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{pmatrix} $$
+    </div>
+    <pre class="block">[[nodiscard]] inline Vec2 to_ego_frame(Vec2 world_pt, const Pose& ego) noexcept {
+    return (world_pt - ego.pos).rotated(-ego.yaw);
+}</pre>
+    <div class="desc">
+      <code>rotated(a)</code> (geometry.hpp:79) is where $R(\theta)$ actually lives —
+      <code>{c*x - s*y, s*x + c*y}</code> with <code>c=cos(a), s=sin(a)</code> is that matrix,
+      written out. Order matters: subtract the position <em>first</em>, then rotate — rotating
+      first would spin the car's own position around the world origin instead of around itself.
+    </div>
+    <div class="where">geometry.hpp:127</div>
+  </div>
+
+  <div class="card">
+    <h3>Where it's actually called</h3>
+    <table class="datatable">
+      <thead><tr><th>File</th><th>What it's used for</th></tr></thead>
+      <tbody>
+        <tr><td>sensors.hpp:178, 201, 222</td><td>Radar / Camera / Lidar each convert every obstacle's world position into ego frame first, so <code>in_fov()</code> (sensors.hpp:151) can check range and bearing with a plain <code>rel.norm()</code> / <code>rel.angle()</code> — no sensor has to know the car's heading itself.</td></tr>
+        <tr><td>controller.hpp:131</td><td>Pure pursuit's lookahead target, converted to ego frame so steering angle is just <code>atan2(e.y, e.x)</code> — the cross-track/heading error a real pure-pursuit controller needs falls straight out of ego-frame coordinates.</td></tr>
+        <tr><td>render.hpp:240, 252</td><td>Drawing an oriented car body and the headlight cone — "is this pixel inside the car rectangle" is a trivial axis-aligned box test <em>once the pixel is in the car's own frame</em>; in world frame it'd need the car's rotation baked into the box test itself.</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      Every single one of those call sites is really asking the same question — "how does this
+      look from the car's point of view" — just for a different purpose (can a sensor see it, how
+      do I steer toward it, does this pixel belong to the car). One function, one idea, reused four
+      different ways.
+    </div>
+  </div>
+</section>
+
+<section id="to-world-frame">
+  <h2>to_world_frame(ego_pt, ego)</h2>
+  <span class="file-tag">The inverse — "I have a point relative to the car, where is it in the world?"</span>
+
+  <div class="card">
+    <h3>The math</h3>
+    <div class="desc">Exactly the two steps of <code>to_ego_frame</code>, reversed: rotate first, then translate.</div>
+    <div class="eq">
+      $$ p_{\text{world}} = R(\psi)\,p_{\text{ego}} + p_{\text{ego,pos}} $$
+    </div>
+    <pre class="block">[[nodiscard]] inline Vec2 to_world_frame(Vec2 ego_pt, const Pose& ego) noexcept {
+    return ego_pt.rotated(ego.yaw) + ego.pos;
+}</pre>
+    <div class="desc">
+      Rotating by <code>+ego.yaw</code> (not <code>-ego.yaw</code>) and doing it <em>before</em>
+      the translation is what makes this the true inverse of <code>to_ego_frame</code> — swap
+      either the sign or the order and round-tripping a point through both functions would silently
+      return the wrong answer instead of the original point.
+    </div>
+    <div class="where">geometry.hpp:130</div>
+  </div>
+
+  <div class="card">
+    <h3>Where it's actually called</h3>
+    <div class="desc">
+      Every real usage is the same shape: a sensor measures something in its own
+      <em>ego-relative</em> polar coordinates (range + bearing — how sensors actually report in
+      the real world), and <code>to_detection()</code> has to turn that back into a world-frame
+      position before it's usable by tracking, which only ever reasons in world frame.
+    </div>
+    <table class="datatable">
+      <thead><tr><th>File</th><th>What's being converted</th></tr></thead>
+      <tbody>
+        <tr><td>sensors.hpp:246</td><td>Radar's <code>(range, bearing)</code> → a world-frame position, via <code>Vec2{range,0}.rotated(bearing)</code> (build the ego-frame offset first) then <code>to_world_frame</code>.</td></tr>
+        <tr><td>sensors.hpp:254</td><td>Camera's <code>(est_range, bearing)</code> → world frame, same pattern.</td></tr>
+        <tr><td>sensors.hpp:259</td><td>Lidar already reports an ego-frame centroid directly (no polar conversion needed first) — straight into <code>to_world_frame</code>.</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      This is the moment sensor fusion becomes possible at all: radar, camera and lidar each see
+      the world through their own, differently-shaped keyhole, but the instant
+      <code>to_detection()</code> calls <code>to_world_frame</code>, all three land in the same
+      shared coordinate system — which is the only reason <code>tracker.hpp</code> can compare a
+      radar return to a lidar cluster in the first place.
+    </div>
+  </div>
+
+  <div class="example" id="roundtrip">
+    <h4>Worked example 1 — the round trip (clean 90°)</h4>
+    <p>
+      This is <em>exactly</em> what <code>tests/test_main.cpp</code> checks (line 39-42), so you
+      can run <code>./build/adas_tests</code> and watch it pass.
+    </p>
+    <pre class="block">ego.pos = (10, 10),  ego.yaw = 90°  (π/2 rad — facing +y)
+world_pt = (10, 15)                 (5 m due north of the car)</pre>
+    <p><strong>to_ego_frame:</strong> subtract, then rotate by −90°.</p>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      \Delta &= (10,15) - (10,10) = (0, 5) \\
+      p_{\text{ego}} &= R(-90°)\,(0,5) = (5, 0)
+      \end{aligned}
+      $$
+    </div>
+    <p>
+      Makes sense: the car is facing +y (north), and the point is 5 m north of it — so "5 m
+      straight ahead" is exactly <code>(5, 0)</code> in ego frame. That's the whole point of the
+      frame: "ahead" is always +x, no matter which way north actually points.
+    </p>
+    <p><strong>to_world_frame:</strong> rotate that result by +90°, then add the car's position back.</p>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      R(90°)\,(5,0) &= (0, 5) \\
+      p_{\text{world}} &= (0,5) + (10,10) = (10, 15)
+      \end{aligned}
+      $$
+    </div>
+    <p>Back to exactly where we started — which is the definition of an inverse, and the only thing the unit test actually asserts.</p>
+  </div>
+
+  <div class="example">
+    <h4>Worked example 2 — a general yaw (no clean angles this time)</h4>
+    <p>
+      90° is a convenient teaching example, but it's also special: the rotation just swaps and
+      negates an axis, no actual trigonometry visible. Here's the same two functions with a yaw
+      that isn't a multiple of 90°, so <code>cos</code>/<code>sin</code> actually show up in the
+      arithmetic.
+    </p>
+    <pre class="block">ego.pos = (0, 0),  ego.yaw = 30°   (π/6 rad)
+world_pt = (10, 0)                  (10 m due east — along world +x)</pre>
+    <p><strong>to_ego_frame:</strong> Δ = (10,0) (ego is at the origin here, so no translation to speak of), then rotate by −30°.</p>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      R(-30°)\,(10,0) &= (\cos(-30°)\cdot 10 - \sin(-30°)\cdot 0,\ \ \sin(-30°)\cdot 10 + \cos(-30°)\cdot 0) \\
+      &= (0.8660 \times 10,\ -0.5 \times 10) = (8.660,\ -5.000)
+      \end{aligned}
+      $$
+    </div>
+    <p>
+      The point is 10 m away either way (rotation preserves distance —
+      $\sqrt{8.660^2+5.000^2}=10$), but the car is turned 30° away from pointing straight at it, so
+      in ego frame the point reads as mostly-ahead ($x=8.66$) and off to the <em>right</em>
+      ($y=-5$, and recall +y is <em>left</em> — negative is right).
+    </p>
+    <p><strong>to_world_frame:</strong> rotate <code>(8.660, −5.000)</code> by <strong>+30°</strong> this time, then add <code>ego.pos = (0,0)</code>.</p>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      R(30°)\,(8.660,-5.000) &= (0.8660\times 8.660 - 0.5\times(-5.000),\ \ 0.5\times 8.660 + 0.8660\times(-5.000)) \\
+      &= (7.500 + 2.500,\ \ 4.330 - 4.330) = (10.000,\ 0.000)
+      \end{aligned}
+      $$
+    </div>
+    <p>
+      Same result as the 90° example: round-tripping through <code>to_ego_frame</code> then
+      <code>to_world_frame</code> lands exactly back on the original point, for <em>any</em> yaw —
+      not just the convenient one.
+    </p>
+  </div>
+</section>
+
+<section id="distance-to-segment">
+  <h2>distance_to_segment(p, a, b)</h2>
+  <span class="file-tag">"How close does point p get to the line segment from a to b?" — not the infinite line, the segment</span>
+
+  <div class="card">
+    <h3>The math — project, clamp, measure</h3>
+    <div class="desc">
+      Project $p$ onto the <em>infinite line</em> through $a$ and $b$, expressed as a parameter $t$
+      (0 at $a$, 1 at $b$). Clamping $t$ to $[0,1]$ is what turns "distance to a line" into
+      "distance to a <em>segment</em>" — without the clamp, a point off the end of the segment
+      would incorrectly measure against a point that isn't actually on it.
+    </div>
+    <div class="eq">
+      $$ t = \operatorname{clamp}\!\left(\frac{(p-a)\cdot(b-a)}{\lVert b-a \rVert^2},\ 0,\ 1\right) \qquad \text{closest} = a + t\,(b-a) $$
+    </div>
+    <div class="eq">$$ \text{distance} = \lVert p - \text{closest} \rVert $$</div>
+    <pre class="block">[[nodiscard]] inline double distance_to_segment(Vec2 p, Vec2 a, Vec2 b) noexcept {
+    const Vec2 ab = b - a;
+    const double len2 = ab.norm2();
+    if (len2 < 1e-12) return distance(p, a);      // a == b: segment has zero length
+    const double t = std::clamp((p - a).dot(ab) / len2, 0.0, 1.0);
+    return distance(p, a + ab * t);
+}</pre>
+    <div class="desc">
+      The <code>len2 &lt; 1e-12</code> guard handles the degenerate case where <code>a</code> and
+      <code>b</code> are (numerically) the same point — dividing by a near-zero
+      <code>len2</code> would otherwise produce garbage or a division by zero.
+    </div>
+    <div class="where">geometry.hpp:98</div>
+  </div>
+
+  <pre class="block">          p
+          ●
+          │  shortest distance is the
+          │  perpendicular to the segment...
+          │
+  a ●─────┴──────────────● b
+          ↑
+       closest point (t ≈ 0.4, inside [0,1] so the
+       clamp doesn't change anything here)
+
+          p
+          ●╲
+            ╲  ...but if the projection falls
+             ╲  past b, the clamp pins t=1, and
+  a ●──────────● b        the closest point becomes
+                          b itself — not a point beyond it</pre>
+
+  <div class="example">
+    <h4>Worked example</h4>
+    <pre class="block">a = (0, 0),  b = (10, 0)     (a 10 m path segment along the x-axis)
+p = (4, 3)                   (an obstacle 4 m along, 3 m off to the side)</pre>
+    <div class="eq">
+      $$
+      \begin{aligned}
+      ab &= (10, 0), \quad \lVert ab \rVert^2 = 100 \\
+      t &= \operatorname{clamp}\!\left(\frac{(4,3)\cdot(10,0)}{100},\ 0,\ 1\right) = \operatorname{clamp}(0.4,\ 0,\ 1) = 0.4 \\
+      \text{closest} &= (0,0) + 0.4\,(10,0) = (4, 0) \\
+      \text{distance} &= \lVert (4,3) - (4,0) \rVert = 3.0 \text{ m}
+      \end{aligned}
+      $$
+    </div>
+    <p style="color:var(--text-dim);font-size:0.88rem;margin:0.6rem 0 0">
+      Now push the obstacle past the end of the segment — <code>p = (13, 3)</code>. The raw
+      projection would give $t = 1.3$, but the clamp pins it to $t=1$, so the closest point becomes
+      $b=(10,0)$ and the distance is $\sqrt{3^2+3^2} \approx 4.24$ m, not the (wrong) 3 m you'd get
+      from measuring against the infinite line.
+    </p>
+  </div>
+</section>
+
+<section id="why-segment">
+  <h2>Why a segment, not a point</h2>
+  <span class="file-tag">The one real caller — planner.hpp's collision check — and the bug that explains why it's written this way</span>
+
+  <div class="card">
+    <h3>planner.hpp:188 — clearance to each waypoint <em>segment</em></h3>
+    <div class="desc">
+      The lattice planner scores a candidate path by checking, for every waypoint, how close the
+      predicted position of every tracked obstacle gets. The naive version of this check would
+      just measure distance to each <em>waypoint</em> (a point). This code deliberately measures
+      against the <em>segment</em> from the previous waypoint to this one instead:
+    </div>
+    <pre class="block">const Vec2   from = (k == 0) ? pic.ego.pos : p.points[k - 1];
+for (const auto& rt : rts) {
+    const Vec2   predicted = predict(rt, t);
+    const double clr = geo::distance_to_segment(predicted, from, p.points[k]) - bubble;
+    ...
+}</pre>
+    <div class="where">planner.hpp:178-190</div>
+  </div>
+
+  <div class="card">
+    <h3>The bug this fixed</h3>
+    <div class="desc">
+      Straight from the comment above that loop in the source:
+    </div>
+    <div class="note">
+      "With 1.5 m spacing and a 1 m/step relative motion, a point-only check can step straight over
+      a collision (it did — that bug is how this comment got written)."
+    </div>
+    <div class="desc">
+      The failure mode: waypoints are sampled every 1.5 m along the path, but a fast obstacle can
+      close more than 1 m of distance <em>between</em> two consecutive waypoints. If you only check
+      "how far is the obstacle from waypoint <em>k</em>" and "how far from waypoint <em>k+1</em>",
+      it's entirely possible for the obstacle to cross the car's actual path <em>in between</em> —
+      close to both sampled points, yet the straight-line segment connecting them still runs right
+      through it — and a point-only check would never notice. Checking distance to the
+      <em>segment</em> instead of the two endpoints catches exactly that case, because the segment
+      <em>is</em> the path the car will actually drive, not just the points it happens to be
+      sampled at.
+    </div>
+  </div>
+</section>
+
+</main>
+
+</body>
+</html>

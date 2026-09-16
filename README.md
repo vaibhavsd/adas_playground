@@ -94,6 +94,10 @@ fails. Free, instant, unforgettable.
 will write in every job you ever have. Bearing conventions kill more sensor
 integrations than bad hardware.
 
+**Deeper dive:** `docs/geometry.html` — worked examples (with real numbers)
+for `to_ego_frame`/`to_world_frame` and `distance_to_segment`, plus every
+call site across the codebase that uses them and why.
+
 ---
 
 ## Day 2 — `vehicle.hpp` · "The plant"
@@ -136,6 +140,10 @@ each one in every multi-threaded C++ codebase for the rest of your career:
 - 3.1 Replace `scoped_lock` in `Latest::publish` with `lock_guard`. Compiles? (Yes — `scoped_lock` matters when you lock *two* mutexes at once; it orders them to avoid deadlock.)
 - 3.2 Build with `-DADAS_TSAN=ON` (CMake) or `-fsanitize=thread`. Run the sim. It should be silent. Now delete the lock in `Shared::get()` and run again. ThreadSanitizer will name the exact two lines that race. This is the most valuable tool you're not using yet.
 - 3.3 `Stats` uses `std::array<std::atomic<int>,3>`. Why can't it be a `std::vector<std::atomic<int>>` that you `push_back` into? (Atomics aren't copyable or movable.)
+
+**Deeper dive:** `docs/concurrency.html` — every primitive with its real call
+sites across the codebase, plus a worked timing trace and side-by-side
+diagrams of why `sleep_until` doesn't drift and `sleep_for` does.
 
 ---
 

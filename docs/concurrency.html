@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>concurrency.hpp — Explainer</title>
+<style>
+  :root {
+    --bg: #1e1f26;
+    --bg-card: #262832;
+    --border: #383a46;
+    --text: #e6e6ea;
+    --text-dim: #9a9caa;
+    --accent: #6fb3ff;
+    --accent2: #4fae7a;
+    --code-bg: #12131a;
+    --select: #3a5f8a;
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f7f9;
+    --bg-card: #ffffff;
+    --border: #dcdde3;
+    --text: #22232a;
+    --text-dim: #6b6d78;
+    --accent: #1c6fd6;
+    --accent2: #1c8a52;
+    --code-bg: #edeef2;
+    --select: #cfe3fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    padding: 2.2rem 2rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  header h1 {
+    margin: 0 0 0.3rem;
+    font-size: 1.6rem;
+    letter-spacing: 0.02em;
+  }
+  header p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  #theme-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #theme-toggle:hover { border-color: var(--accent); }
+  #theme-toggle .icon { font-size: 1rem; line-height: 1; }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  nav a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  nav a:hover { background: var(--bg-card); }
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 4rem;
+  }
+  section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 4.5rem;
+  }
+  section > h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.2rem;
+    color: var(--accent);
+  }
+  section > .file-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    display: block;
+  }
+  section > .intro {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-bottom: 1.2rem;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    margin-bottom: 1.1rem;
+  }
+  .card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .card .desc {
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    margin-bottom: 0.7rem;
+  }
+  code, .inline-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--code-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--accent2);
+  }
+  .where {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .example {
+    margin-top: 1.2rem;
+    padding: 1.3rem 1.4rem;
+    border-top: 1px dashed var(--border);
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .example + .example { margin-top: 1.4rem; }
+  .example h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .example p {
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+  }
+  pre.block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--accent2);
+    margin: 0.8rem 0;
+    line-height: 1.6;
+  }
+  table.datatable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.85rem;
+  }
+  table.datatable th, table.datatable td {
+    text-align: right;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  table.datatable th:first-child, table.datatable td:first-child { text-align: left; }
+  table.datatable th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  table.datatable td { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+  .note {
+    border-left: 3px solid var(--accent);
+    padding: 0.15rem 0 0.15rem 0.9rem;
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+  .steps { margin: 0.6rem 0 0.6rem 1.2rem; padding: 0; color: var(--text-dim); font-size: 0.9rem; }
+  .steps li { margin-bottom: 0.35rem; }
+  .steps strong { color: var(--text); }
+  .figrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 0.8rem 0;
+  }
+  .figrow figure {
+    flex: 1 1 300px;
+    margin: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 0.9rem 0.6rem;
+  }
+  .figrow figure svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    color: var(--text);
+  }
+  .figrow figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .svg-accent { color: var(--accent); }
+  .svg-bad { color: #d16565; }
+  .lifecycle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    margin: 0.8rem 0;
+  }
+  .lifecycle .state {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    font-size: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .lifecycle .arrow { color: var(--text-dim); font-size: 0.9rem; }
+  ::selection { background: var(--select); }
+  @media (max-width: 600px) {
+    header, nav, main { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>concurrency.hpp — Explainer</h1>
+    <p>Walkthrough of <code>adas::conc</code> — the five primitives that let eight threads share state with zero data races.</p>
+  </div>
+  <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme">
+    <span class="icon" id="theme-icon">🌙</span>
+    <span id="theme-label">Dark</span>
+  </button>
+</header>
+
+<script>
+  (function () {
+    const root = document.documentElement;
+    const saved = (() => {
+      try { return localStorage.getItem('adas-concurrency-theme'); } catch (e) { return null; }
+    })();
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = saved || (systemDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', initial);
+
+    window.toggleTheme = function () {
+      const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('adas-concurrency-theme', next); } catch (e) {}
+      updateButton(next);
+    };
+
+    function updateButton(theme) {
+      const icon = document.getElementById('theme-icon');
+      const label = document.getElementById('theme-label');
+      if (!icon || !label) return;
+      if (theme === 'dark') { icon.textContent = '🌙'; label.textContent = 'Dark'; }
+      else                  { icon.textContent = '☀️'; label.textContent = 'Light'; }
+    }
+    document.addEventListener('DOMContentLoaded', () => updateButton(initial));
+  })();
+</script>
+
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#blockingqueue">BlockingQueue</a>
+  <a href="#latest">Latest</a>
+  <a href="#shared">Shared</a>
+  <a href="#eventlog">EventLog</a>
+  <a href="#stats">Stats</a>
+  <a href="#run-at-rate">run_at_rate</a>
+  <a href="#together">Putting it together</a>
+</nav>
+
+<main>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <span class="file-tag">Day 3 — concurrency.hpp — "Before we build the world, we build the phone lines."</span>
+  <div class="card">
+    <h3>What this file is</h3>
+    <div class="desc">
+      Five small thread-safety primitives, written <em>before</em> anything that needs them exists
+      (the world, the sensors, the tracker are all Day 4+) — because every one of the eight threads
+      main.cpp eventually spins up (Day 10) needs a safe way to hand data to the others, and this
+      file is the entire menu of options:
+    </div>
+    <table class="datatable">
+      <thead><tr><th>Type</th><th>Shape</th><th>Used for</th></tr></thead>
+      <tbody>
+        <tr><td><code>BlockingQueue&lt;T&gt;</code></td><td>many-to-one, batch</td><td>sensor frames → fusion</td></tr>
+        <tr><td><code>Latest&lt;T&gt;</code></td><td>one-to-many, newest-wins</td><td>fused picture → planner &amp; controller</td></tr>
+        <tr><td><code>Shared&lt;T&gt;</code></td><td>one-to-one/few, plain box</td><td>path → controller, control → world</td></tr>
+        <tr><td><code>EventLog</code></td><td>many-to-one, singleton</td><td>every module logs into one place</td></tr>
+        <tr><td><code>Stats</code></td><td>many-to-one, counters only</td><td>per-thread cycle counts, lock-free</td></tr>
+      </tbody>
+    </table>
+    <div class="desc">
+      Plus one function, <code>run_at_rate()</code>, that isn't about sharing data at all — it's
+      what makes every one of those eight threads actually <em>tick</em> at a steady rate in the
+      first place.
+    </div>
+    <div class="note">
+      None of these are exotic. There's no lock-free ring buffer, no custom atomics dance beyond
+      one textbook release/acquire pair. The lesson here isn't "concurrency is hard, look at this
+      clever trick" — it's "here are the four or five shapes that cover almost every real
+      producer/consumer problem, pick the right one and the rest is standard library."
+    </div>
+    <div class="where">include/adas/concurrency.hpp — namespace adas::conc</div>
+  </div>
+</section>
+
+<section id="blockingqueue">
+  <h2>BlockingQueue&lt;T&gt;</h2>
+  <span class="file-tag">Many producers, one consumer, "give me everything that's arrived" instead of one-at-a-time</span>
+
+  <div class="card">
+    <h3>Why drain-all instead of pop-one</h3>
+    <div class="desc">
+      The obvious queue API is <code>push()</code> / <code>pop()</code> — one item at a time. This
+      queue deliberately doesn't offer <code>pop()</code> at all. Its only consumer is the fusion
+      thread, and fusion doesn't want "the next detection," it wants <em>every</em> detection that
+      arrived since the last cycle, all at once, so it can process them as one batch:
+    </div>
+    <pre class="block">void push(T item) {
+    { std::lock_guard lk(m_); items_.push_back(std::move(item)); }
+    cv_.notify_one();
+}
+
+std::vector&lt;T&gt; drain(std::chrono::milliseconds timeout) {
+    std::unique_lock lk(m_);
+    cv_.wait_for(lk, timeout, [&amp;] { return !items_.empty() || closed_; });
+    std::vector&lt;T&gt; out;
+    out.swap(items_);   // O(1): steal the buffer, leave an empty one behind
+    return out;
+}</pre>
+    <div class="desc">
+      <code>swap</code> instead of <code>= items_; items_.clear()</code> is the small trick worth
+      noticing: it's a pointer/size swap, not a copy of every pending item, and it leaves
+      <code>items_</code> as a valid empty vector for the next round of pushes.
+    </div>
+    <div class="where">concurrency.hpp:79-111</div>
+  </div>
+
+  <div class="card">
+    <h3>Why <code>unique_lock</code> here but <code>lock_guard</code> elsewhere</h3>
+    <div class="desc">
+      <code>push()</code> and <code>close()</code> use the plain <code>lock_guard</code> — lock,
+      do one thing, unlock. <code>drain()</code> needs <code>unique_lock</code> specifically
+      because <code>condition_variable::wait_for</code> has to be able to <em>unlock</em> the mutex
+      while it waits (so producers can still <code>push()</code>) and re-lock it the instant it
+      wakes up — a capability <code>lock_guard</code> doesn't have by design (it's RAII-simple, on
+      purpose, and can't be unlocked early).
+    </div>
+    <div class="where">concurrency.hpp:94 vs. concurrency.hpp:84,102</div>
+  </div>
+
+  <div class="card">
+    <h3>Why notify <em>outside</em> the lock</h3>
+    <div class="desc">
+      <code>push()</code> closes its lock scope with a bare <code>{ ... }</code> block before
+      calling <code>cv_.notify_one()</code>. If the notify happened while still holding the lock,
+      the woken consumer thread would immediately try to re-lock the same mutex and block again
+      until the producer's scope actually ends — a real (if usually tiny) contention window,
+      avoided here for free by just moving one line outside the braces.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Where it's actually used</h3>
+    <div class="desc">
+      Exactly one queue, in the whole program. Three sensor threads push into it; one fusion
+      thread drains it:
+    </div>
+    <pre class="block">adas::conc::BlockingQueue&lt;adas::sense::SensorFrame&gt; queue;         // main.cpp:106
+
+// radar / camera / lidar threads, each at their own rate:
+queue.push(sensor->capture(world.snapshot()));                    // main.cpp:138
+
+// fusion thread, event-driven — wakes whenever anything arrives:
+while (!st.stop_requested()) {
+    auto frames = queue.drain(20ms);                               // main.cpp:147
+    if (frames.empty()) continue;
+    ...
+}
+
+// shutdown:
+queue.close();                                                     // main.cpp:210</pre>
+    <div class="desc">
+      That <code>20ms</code> timeout is a ceiling, not a rate — <code>drain()</code> returns the
+      moment anything is pushed (radar alone pushes every 50 ms, camera every ~67 ms, lidar every
+      100 ms), so fusion is event-driven in practice and only ever blocks for the full 20 ms if
+      every sensor happens to go quiet.
+    </div>
+    <div class="where">main.cpp:106, 138, 147, 210</div>
+  </div>
+
+  <div class="example">
+    <h4>Worked example — one drain() cycle</h4>
+    <p>A slice of real timing, radar (20 Hz → 50 ms) and camera (15 Hz → ~67 ms) both mid-flight:</p>
+    <pre class="block">t=0ms     fusion calls drain(20ms), queue is empty → blocks
+t=12ms    radar thread:  queue.push(radar_frame)   → cv_.notify_one()
+t=12ms    fusion wakes immediately (well under the 20ms timeout),
+          swaps out items_ = [radar_frame], returns it
+t=12ms    fusion:  drain() returned [radar_frame]  → tracker.update([radar_frame])
+t=12ms    fusion calls drain(20ms) again, queue is empty → blocks
+t=31ms    camera thread: queue.push(camera_frame)  → cv_.notify_one()
+t=31ms    fusion wakes, drain() returns [camera_frame]</pre>
+    <p>
+      If instead radar and camera had landed 1ms apart (<code>t=12ms</code> and
+      <code>t=13ms</code>), and fusion happened to be slow to wake, <em>one</em>
+      <code>drain()</code> call would return <em>both</em> frames in the same
+      <code>std::vector</code> — that's the entire point of batching: fusion never has to care how
+      many sensors fired in a given window, it just processes "whatever showed up."
+    </p>
+  </div>
+</section>
+
+<section id="latest">
+  <h2>Latest&lt;T&gt;</h2>
+  <span class="file-tag">One writer, many readers, "give me the newest value" — old ones are simply gone</span>
+
+  <div class="card">
+    <h3>Why shared_mutex</h3>
+    <div class="desc">
+      A plain <code>std::mutex</code> only ever allows one thread in at a time, reader or writer.
+      <code>Latest</code> uses <code>std::shared_mutex</code> instead so that <em>N readers can
+      all proceed concurrently</em>, and only the one writer needs exclusive access:
+    </div>
+    <pre class="block">void publish(T value) {
+    { std::scoped_lock lk(m_); value_ = std::move(value); }   // exclusive lock
+    version_.fetch_add(1, std::memory_order_release);
+}
+
+T read() const {
+    std::shared_lock lk(m_);   // shared lock — many readers at once
+    return value_;             // copy out; the lock ends here
+}</pre>
+    <div class="desc">
+      In this codebase that matters concretely: the planner thread and the controller thread both
+      call <code>picture.read()</code> independently, at different rates (10 Hz vs. 50 Hz) — with
+      a plain mutex, one would occasionally have to wait on the other for no real reason. With
+      <code>shared_mutex</code>, they never block each other; only <code>publish()</code> (the
+      fusion thread, once per cycle) ever needs exclusive access.
+    </div>
+    <div class="where">concurrency.hpp:125-149</div>
+  </div>
+
+  <div class="card">
+    <h3>The lock-free "has anything happened yet" check</h3>
+    <div class="desc">
+      <code>version_</code> is a plain <code>std::atomic&lt;uint64_t&gt;</code>, incremented on
+      every publish. Reading it needs no lock at all — so any thread can cheaply ask "is there
+      anything to read yet?" before paying for a real <code>read()</code> (which copies the whole
+      value out):
+    </div>
+    <pre class="block">if (picture.version() == 0) return;   // nothing fused yet — main.cpp:173, 183</pre>
+    <div class="desc">
+      Without this, the planner and controller threads would have to call the full
+      <code>read()</code> every cycle from the moment they start, get back a default-constructed
+      <code>FusedPicture{}</code>, and have to separately check <em>that</em> for emptiness — this
+      is simpler and cheaper.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>The memory-order comment, unpacked</h3>
+    <div class="desc">
+      The header comment calls this "belt-and-braces" — worth understanding literally.
+      <code>memory_order_release</code> on the writer's <code>fetch_add</code> and
+      <code>memory_order_acquire</code> on the reader's <code>load</code> together guarantee: if a
+      reader observes version <em>N</em>, it is also guaranteed to see every write that happened
+      <em>before</em> version <em>N</em> was stored — no reordering can let the reader see the new
+      version number but a stale <code>value_</code>.
+    </div>
+    <div class="desc">
+      Here, the <code>shared_mutex</code> around <code>value_</code> already provides that
+      guarantee on its own (acquiring any mutex is itself an acquire-fence, releasing one is a
+      release-fence) — so the explicit memory orders on <code>version_</code> are technically
+      redundant with the lock that's already there. They're included anyway because
+      <code>version()</code> is read completely <em>outside</em> any lock (that's the whole point
+      of it being cheap), and the acquire/release pairing is what makes that safe on its own,
+      independent of the mutex. It's the idiom worth memorizing, not just an artifact of this one
+      class.
+    </div>
+    <div class="where">concurrency.hpp:120-123</div>
+  </div>
+
+  <div class="card">
+    <h3>Where it's actually used</h3>
+    <table class="datatable">
+      <thead><tr><th>Instance</th><th>Publishes</th><th>Read by</th></tr></thead>
+      <tbody>
+        <tr><td><code>picture</code></td><td>fusion thread, once per drain cycle</td><td>planner (10 Hz), controller (50 Hz), render (12 Hz)</td></tr>
+        <tr><td><code>raw_dets</code></td><td>fusion thread, before tracker.update() consumes them</td><td>render only — recording/analysis, never fed back into the pipeline</td></tr>
+      </tbody>
+    </table>
+    <div class="where">main.cpp:107, 110, 159, 163, 173-174, 183-184, 196-197</div>
+  </div>
+</section>
+
+<section id="shared">
+  <h2>Shared&lt;T&gt;</h2>
+  <span class="file-tag">When you don't need multiple readers or a version counter — just a lock and a box</span>
+
+  <div class="card">
+    <h3>The whole class</h3>
+    <pre class="block">template &lt;typename T&gt;
+class Shared {
+public:
+    void set(T v) { std::scoped_lock lk(m_); value_ = std::move(v); }
+    T    get() const { std::scoped_lock lk(m_); return value_; }
+private:
+    mutable std::mutex m_;
+    T                  value_{};
+};</pre>
+    <div class="desc">
+      No <code>shared_mutex</code>, no version counter, no condition variable — deliberately the
+      simplest thing that could work. Choosing this over <code>Latest</code> is a judgment call
+      about read pressure: <code>Path</code> and <code>Control</code> each have exactly <em>one</em>
+      reader (the controller reads the path; the world reads the control), so there's no reader
+      contention to optimize away with a <code>shared_mutex</code> — it would just be extra
+      machinery with nothing to buy.
+    </div>
+    <div class="where">concurrency.hpp:154-163</div>
+  </div>
+
+  <div class="card">
+    <h3>Where it's actually used</h3>
+    <pre class="block">adas::conc::Shared&lt;adas::plan::Path&gt;    path;      // main.cpp:111
+adas::conc::Shared&lt;adas::sim::Control&gt;  command;   // main.cpp:112
+
+path.set(planner->plan(picture.read(), world.course()));    // planner thread, 10 Hz — main.cpp:174
+command.set(controller.compute(pic.ego, pic.ego_speed, path.get(), dt));  // control thread, 50 Hz — main.cpp:185
+world.step(command.get(), dt);                               // sim thread, 100 Hz — main.cpp:126</pre>
+    <div class="note">
+      Notice the asymmetry with <code>Latest</code>: <code>picture</code> is written by one thread
+      and read by <em>three</em> (planner, controller, render), so it earns the
+      <code>shared_mutex</code>. <code>path</code> and <code>command</code> are each written by one
+      thread and read by exactly one other, so <code>Shared</code> is the right-sized tool — using
+      <code>Latest</code> there wouldn't be wrong, just unnecessary.
+    </div>
+    <div class="where">main.cpp:111-112, 126, 174, 185</div>
+  </div>
+</section>
+
+<section id="eventlog">
+  <h2>EventLog</h2>
+  <span class="file-tag">A thread-safe singleton logger — every module posts into the same tail(), no wiring required</span>
+
+  <div class="card">
+    <h3>The Meyers singleton</h3>
+    <pre class="block">static EventLog&amp; instance() {
+    static EventLog log;   // function-local static
+    return log;
+}</pre>
+    <div class="desc">
+      Since C++11, initialization of a function-local <code>static</code> is guaranteed
+      thread-safe by the language itself — if two threads call <code>instance()</code> for the
+      first time simultaneously, the compiler-generated code ensures the constructor runs exactly
+      once and every caller gets the same, fully-constructed object. No manual
+      <code>std::once_flag</code>, no double-checked locking pattern needed; this is the whole
+      reason "Meyers singleton" (named for Scott Meyers, who popularized it) is the standard way to
+      write one in modern C++.
+    </div>
+    <div class="where">concurrency.hpp:174-177</div>
+  </div>
+
+  <div class="card">
+    <h3>source_location instead of __FILE__/__LINE__</h3>
+    <pre class="block">void post(std::string msg,
+          std::source_location loc = std::source_location::current()) { ... }</pre>
+    <div class="desc">
+      <code>std::source_location::current()</code> as a default argument captures the file and
+      line of the <em>call site</em> — not of this function's own definition — because default
+      arguments are evaluated at each call. Every module in this codebase can write
+      <code>EventLog::instance().post("...")</code> with zero boilerplate and get an accurate
+      <code>tracker.hpp:226</code>-style tag for free, where the old C idiom needed an explicit
+      <code>__FILE__, __LINE__</code> macro pair threaded through every call.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Where it's actually posted from</h3>
+    <table class="datatable">
+      <thead><tr><th>File</th><th>Event</th></tr></thead>
+      <tbody>
+        <tr><td>main.cpp:204</td><td>run started — seconds, seed, thread count</td></tr>
+        <tr><td>world.hpp:216</td><td>lap completed</td></tr>
+        <tr><td>world.hpp:227</td><td>contact with an obstacle</td></tr>
+        <tr><td>world.hpp:231</td><td>crash (with reason)</td></tr>
+        <tr><td>tracker.hpp:226</td><td>a track gets confirmed (which sensor triggered it)</td></tr>
+        <tr><td>tracker.hpp:239</td><td>a track gets dropped (pruned)</td></tr>
+      </tbody>
+    </table>
+    <div class="desc">
+      Five completely unrelated modules, none of which pass a logger reference to each other —
+      each just calls the same static <code>instance()</code>. <code>render.hpp</code> is the only
+      <em>reader</em>: it calls <code>tail(4)</code> / <code>tail(6)</code> every frame to show the
+      most recent events in the terminal footer and in <code>run.jsonl</code>'s recorded
+      <code>events[]</code> array.
+    </div>
+    <div class="where">render.hpp:375, 452 (readers); the six posts above (writers)</div>
+  </div>
+</section>
+
+<section id="stats">
+  <h2>Stats</h2>
+  <span class="file-tag">Lock-free counters — no mutex needed when all you ever do is increment and read</span>
+
+  <div class="card">
+    <h3>Why no mutex at all</h3>
+    <pre class="block">struct Stats {
+    std::array&lt;std::atomic&lt;int&gt;, 3&gt; sensor_frames{};  // indexed by SensorKind
+    std::atomic&lt;int&gt; fusion_cycles{0};
+    std::atomic&lt;int&gt; plans{0};
+    std::atomic&lt;int&gt; control_ticks{0};
+    std::atomic&lt;int&gt; sim_ticks{0};
+    std::atomic&lt;int&gt; render_frames{0};
+};</pre>
+    <div class="desc">
+      <code>std::atomic&lt;int&gt;::operator++</code> is itself an atomic read-modify-write — no two
+      threads incrementing the same counter can ever race and lose an update, with no lock
+      involved. This works specifically <em>because</em> every field here is "increment it, read
+      it later" — there's never a need to update two counters together as one atomic unit (that
+      would need a real lock), so a struct of independent atomics is the simplest thing that's
+      still fully correct.
+    </div>
+    <div class="where">concurrency.hpp:211-218</div>
+  </div>
+
+  <div class="card">
+    <h3>One counter, seven writers, one reader</h3>
+    <div class="desc">
+      Every field is incremented by a <em>different</em> thread, all sharing the one
+      <code>Stats stats;</code> instance declared in <code>main()</code>:
+    </div>
+    <pre class="block">++stats.sim_ticks;                                              // sim thread     — main.cpp:127
+++stats.sensor_frames[static_cast&lt;std::size_t&gt;(f.kind)];        // fusion thread  — main.cpp:155
+++stats.fusion_cycles;                                          // fusion thread  — main.cpp:165
+++stats.plans;                                                  // planner thread — main.cpp:175
+++stats.control_ticks;                                          // control thread — main.cpp:186
+++stats.render_frames;                                          // render thread  — main.cpp:200</pre>
+    <div class="desc">
+      The render thread reads all of them every frame (the header/footer counters you see in the
+      terminal and in <code>run.jsonl</code>'s <code>stats{}</code> object), and <code>main()</code>
+      reads the final totals once at shutdown for the post-race summary. <code>sensor_frames</code>
+      being incremented by <em>fusion</em> rather than by each sensor thread itself is worth
+      noticing: fusion counts a frame once it's actually been drained and processed, not just
+      pushed — so this counter reflects work done, not just work queued.
+    </div>
+    <div class="where">main.cpp:113, 127, 155, 165, 175, 186, 200, 220</div>
+  </div>
+</section>
+
+<section id="run-at-rate">
+  <h2>run_at_rate()</h2>
+  <span class="file-tag">"The heartbeat of every thread in this project" — not a data-sharing primitive, a timing one</span>
+
+  <div class="card">
+    <h3>sleep_until vs. sleep_for</h3>
+    <div class="desc">
+      The naive fixed-rate loop calls <code>sleep_for(period)</code> after each iteration. That's
+      wrong for anything that needs a steady <em>average</em> rate: if the body itself takes time
+      to run, <code>sleep_for</code> only waits <code>period</code> <em>after</em> the body
+      finishes — so every iteration's total cost is <code>body_time + period</code>, and the loop
+      drifts later and later relative to a true fixed schedule.
+    </div>
+    <pre class="block">template &lt;std::invocable&lt;double&gt; Body&gt;
+void run_at_rate(std::stop_token st, std::chrono::milliseconds period, Body&amp;&amp; body) {
+    auto next = Clock::now();
+    auto last = next;
+    bool first = true;
+    while (!st.stop_requested()) {
+        const auto now = Clock::now();
+        const double dt = first ? std::chrono::duration&lt;double&gt;(period).count()
+                                : std::chrono::duration&lt;double&gt;(now - last).count();
+        first = false;
+        last = now;
+        body(dt);
+        next += period;                    // absolute deadline, not "now + period"
+        std::this_thread::sleep_until(next);
+    }
+}</pre>
+    <div class="desc">
+      <code>next += period</code> advances an <em>absolute</em> deadline that was fixed before the
+      body ever ran. If the body happens to run long one cycle, <code>sleep_until(next)</code>
+      simply returns almost immediately (or not at all, if <code>next</code> is already in the
+      past) instead of adding a full extra <code>period</code> on top — the schedule can catch up,
+      it never accumulates drift.
+    </div>
+    <div class="where">concurrency.hpp:230-245</div>
+  </div>
+
+  <div class="figrow">
+    <figure>
+      <svg viewBox="0 0 460 220" role="img" aria-label="sleep_for timeline: each cycle's wait starts after the body finishes, so a slow body pushes every later cycle later too — the schedule drifts and never recovers.">
+        <defs>
+          <marker id="arrSF" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <text x="10" y="20" font-size="12" font-weight="bold">sleep_for(period) — drifts</text>
+        <line x1="10" y1="40" x2="450" y2="40" stroke="currentColor" stroke-width="1" marker-end="url(#arrSF)"/>
+        <text x="450" y="36" font-size="10" text-anchor="end">time</text>
+
+        <!-- cycle 1: short body -->
+        <rect x="20" y="55" width="30" height="18" fill="currentColor" opacity="0.55"/>
+        <text x="35" y="90" font-size="9" text-anchor="middle">body</text>
+        <g class="svg-accent"><rect x="50" y="55" width="60" height="18" fill="currentColor" opacity="0.35"/></g>
+        <text x="80" y="90" font-size="9" text-anchor="middle" class="svg-accent">sleep(period)</text>
+        <line x1="20" y1="105" x2="20" y2="115" stroke="currentColor" stroke-width="1"/>
+        <text x="20" y="128" font-size="9" text-anchor="middle">t=0</text>
+
+        <!-- cycle 2: LONG body, eats into what should be the next slot -->
+        <rect x="110" y="55" width="90" height="18" class="svg-bad" fill="currentColor" opacity="0.55"/>
+        <text x="155" y="90" font-size="9" text-anchor="middle" class="svg-bad">long body</text>
+        <g class="svg-accent"><rect x="200" y="55" width="60" height="18" fill="currentColor" opacity="0.35"/></g>
+
+        <!-- cycle 3: starts later than the "ideal" grid below -->
+        <rect x="260" y="55" width="30" height="18" fill="currentColor" opacity="0.55"/>
+        <g class="svg-accent"><rect x="290" y="55" width="60" height="18" fill="currentColor" opacity="0.35"/></g>
+
+        <!-- ideal fixed grid, dashed, for comparison -->
+        <line x1="20" y1="150" x2="20" y2="166" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+        <line x1="110" y1="150" x2="110" y2="166" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+        <line x1="200" y1="150" x2="200" y2="166" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+        <text x="20" y="180" font-size="9" text-anchor="middle" opacity="0.6">ideal</text>
+        <text x="110" y="180" font-size="9" text-anchor="middle" opacity="0.6">ideal</text>
+        <text x="200" y="180" font-size="9" text-anchor="middle" opacity="0.6">ideal</text>
+        <line x1="260" y1="150" x2="290" y2="166" stroke="currentColor" stroke-width="1.5" class="svg-bad"/>
+        <text x="310" y="180" font-size="10" class="svg-bad">actual start has drifted right →</text>
+      </svg>
+      <figcaption>sleep_for: one slow cycle (red) pushes every later cycle's start time later, permanently.</figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 460 220" role="img" aria-label="sleep_until timeline: the deadline for each cycle is fixed in advance, so a slow body just gets less sleep afterward — the schedule never drifts.">
+        <defs>
+          <marker id="arrSU" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <text x="10" y="20" font-size="12" font-weight="bold">sleep_until(next) — steady</text>
+        <line x1="10" y1="40" x2="450" y2="40" stroke="currentColor" stroke-width="1" marker-end="url(#arrSU)"/>
+        <text x="450" y="36" font-size="10" text-anchor="end">time</text>
+
+        <rect x="20" y="55" width="30" height="18" fill="currentColor" opacity="0.55"/>
+        <g class="svg-accent"><rect x="50" y="55" width="60" height="18" fill="currentColor" opacity="0.35"/></g>
+
+        <!-- long body eats entirely into what would have been sleep time, not
+             into the next cycle's slot — so the next body starts right where
+             the fixed deadline grid says it should. -->
+        <rect x="110" y="55" width="90" height="18" class="svg-bad" fill="currentColor" opacity="0.55"/>
+        <text x="120" y="90" font-size="9" text-anchor="start" class="svg-bad">long body — eats its own sleep budget</text>
+
+        <!-- next cycle starts EXACTLY on the fixed grid -->
+        <rect x="200" y="55" width="30" height="18" fill="currentColor" opacity="0.55"/>
+        <g class="svg-accent"><rect x="230" y="55" width="60" height="18" fill="currentColor" opacity="0.35"/></g>
+
+        <line x1="20" y1="150" x2="20" y2="166" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+        <line x1="110" y1="150" x2="110" y2="166" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+        <line x1="200" y1="150" x2="200" y2="166" stroke="currentColor" stroke-width="1.5" class="svg-accent"/>
+        <text x="20" y="180" font-size="9" text-anchor="middle" opacity="0.6">ideal</text>
+        <text x="110" y="180" font-size="9" text-anchor="middle" opacity="0.6">ideal</text>
+        <text x="200" y="180" font-size="9" text-anchor="middle" class="svg-accent">ideal ✓</text>
+        <text x="200" y="200" font-size="10" text-anchor="middle" class="svg-accent">next cycle starts exactly on this tick</text>
+      </svg>
+      <figcaption>sleep_until: the same slow cycle just eats its own sleep time — the fixed deadline grid never moves.</figcaption>
+    </figure>
+  </div>
+
+  <div class="example">
+    <h4>Worked example — a 100 Hz loop with one slow cycle</h4>
+    <p><code>period = 10ms</code> (this is literally <code>kSimPeriod</code>, main.cpp:48). Three iterations, the second one's body runs long:</p>
+    <pre class="block">iteration 1: next = t0 + 10ms.  body takes 2ms.   sleep_until(t0+10ms) waits  8ms. starts at t0+10ms.  ON SCHEDULE
+iteration 2: next = t0 + 20ms.  body takes 14ms!  sleep_until(t0+20ms) is already PAST → returns immediately. starts at t0+24ms. LATE this once
+iteration 3: next = t0 + 30ms.  body takes 2ms.   sleep_until(t0+30ms) waits  4ms (30 - 24 - 2). starts at t0+30ms.  BACK ON SCHEDULE</pre>
+    <p>
+      With <code>sleep_for(10ms)</code> instead — same three body times, traced independently —
+      the drift never recovers: iteration 2 starts at <code>t0+12ms</code> (already 2 ms late,
+      from body 1's time alone — <code>sleep_for</code> adds lateness even when the body finishes
+      <em>under</em> the period, because it never looks at the clock, only at how long it's asked
+      to sleep <em>after</em> whatever just happened). Iteration 3 starts at <code>t0+36ms</code>
+      (16 ms late — body 2's full 14 ms stacked on top, not just the 4 ms it ran over). Iteration 4
+      starts at <code>t0+48ms</code> (18 ms late). Every cycle's body time becomes <em>permanent</em>
+      lateness, whether or not that cycle happened to run over. <code>sleep_until</code>'s
+      iteration 4, by contrast, lands exactly on <code>t0+30ms</code> — dead on the ideal grid —
+      because only the one cycle that actually overran (iteration 2) ever cost it anything.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Why <code>std::invocable&lt;double&gt;</code></h3>
+    <div class="desc">
+      The template parameter is constrained to lambdas callable with one <code>double</code>
+      argument (the computed <code>dt</code>). Without the concept, passing a lambda with the wrong
+      signature — say, one that takes no arguments — would fail deep inside the template
+      instantiation with a wall of unreadable errors about <code>body(dt)</code> not being callable.
+      With the concept, the compiler rejects it right at the call site with a message that names
+      the actual constraint that failed.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>The five rates this drives</h3>
+    <table class="datatable">
+      <thead><tr><th>Thread</th><th>Period</th><th>Rate</th></tr></thead>
+      <tbody>
+        <tr><td>sim</td><td>10 ms</td><td>100 Hz</td></tr>
+        <tr><td>control</td><td>20 ms</td><td>50 Hz</td></tr>
+        <tr><td>planner</td><td>100 ms</td><td>10 Hz</td></tr>
+        <tr><td>render</td><td>~83 ms</td><td>12 Hz</td></tr>
+        <tr><td>radar / camera / lidar</td><td>50 / ~67 / 100 ms</td><td>20 / 15 / 10 Hz (each sensor's own <code>period()</code>)</td></tr>
+      </tbody>
+    </table>
+    <div class="desc">
+      Fusion is the one thread that does <em>not</em> use <code>run_at_rate</code> — it's
+      event-driven on <code>queue.drain()</code> instead (see the BlockingQueue section above),
+      because "wake up whenever data arrives" is a fundamentally different scheduling need than
+      "run at a fixed cadence regardless of input."
+    </div>
+    <div class="where">main.cpp:48-51 (period constants), 125, 137, 172, 182, 194 (the five call sites)</div>
+  </div>
+</section>
+
+<section id="together">
+  <h2>Putting it together</h2>
+  <span class="file-tag">Every primitive above, in the one diagram that actually uses all of them at once</span>
+
+  <div class="card">
+    <h3>The eight threads and what connects them</h3>
+    <pre class="block">   sim (100Hz, run_at_rate)  ──writes──►  World (owns ground truth)
+                                              │ snapshot()
+        ┌─────────────────────────────────────┼─────────────────────────────┐
+        ▼                                     ▼                             ▼
+  radar (20Hz)   camera (15Hz)   lidar (10Hz)     ...each run_at_rate, each push()
+        │               │              │           into the SAME BlockingQueue
+        └───────────────┴──────────────┘
+                         │  queue.drain(20ms)  — event-driven, not run_at_rate
+                         ▼
+                    fusion thread
+                         │  picture.publish(...)  +  raw_dets.publish(...)
+                         ▼
+                  Latest&lt;FusedPicture&gt;  ◄── read() ──┬── planner (10Hz, run_at_rate)
+                                                      └── controller (50Hz, run_at_rate)
+                                                                  │
+                                                     path.set() (Shared&lt;Path&gt;)
+                                                                  ▼
+                                                          controller reads path.get()
+                                                                  │
+                                                    command.set() (Shared&lt;Control&gt;)
+                                                                  ▼
+                                                       sim thread reads command.get()
+
+  Meanwhile, from every thread above: EventLog::instance().post(...) and ++stats.whatever
+  — both fire-and-forget, no coordination with anyone needed.</pre>
+    <div class="desc">
+      Five primitives, eight threads, and not one of them needed a raw <code>std::mutex</code>
+      exposed at a call site — every thread only ever talks to a <code>BlockingQueue</code>,
+      a <code>Latest</code>, a <code>Shared</code>, the <code>EventLog</code> singleton, or a
+      <code>Stats</code> counter. That's the actual argument for building this file on Day 3,
+      before any of the domain logic exists: get the five shapes right once, and every later
+      thread is just "which of these five do I need here."
+    </div>
+    <div class="where">src/main.cpp — the whole file is this diagram made real</div>
+  </div>
+</section>
+
+</main>
+
+</body>
+</html>
