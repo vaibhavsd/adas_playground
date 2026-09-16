@@ -435,6 +435,30 @@ const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const CARS = ['#e05660','#be76e8','#ee923e','#6cb0f0','#ecd65c','#78daa8'];
 let frames = [], i = 0, playing = false, lastT = 0;
 
+// Canvases render at native resolution instead of being stretched by CSS.
+// Every managed canvas has a *fixed* backing-store bitmap (e.g. 420x150) but
+// is displayed at `width:100%` of whatever card it's in — a card that ends
+// up wider than the bitmap (fewer siblings sharing its row, or a retina
+// display doubling every CSS pixel) forces the browser to upscale that
+// bitmap, which is what blur is. This resizes the backing store to the
+// element's actual on-screen size in device pixels on every draw, then
+// scales the context so the rest of the drawing code keeps working in
+// ordinary CSS-pixel coordinates without any other change.
+function fitCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(rect.width || canvas.clientWidth || canvas.width));
+  const h = Math.max(1, Math.round(rect.height || canvas.clientHeight || canvas.height));
+  if (canvas._logW !== w || canvas._logH !== h || canvas._dpr !== dpr) {
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas._logW = w; canvas._logH = h; canvas._dpr = dpr;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
 // World is roughly x∈[-48,48], y∈[-32,32]; fit it with a margin.
 const EXT = {x0:-48, x1:48, y0:-34, y1:34};
 const sx = v => (v - EXT.x0) / (EXT.x1 - EXT.x0) * cv.width;
@@ -492,10 +516,15 @@ function drawCar(x, y, yaw, colour, ego) {
 }
 
 // ---- sensors section: raw per-sensor detection scatter, current frame ----
-const detCv = document.getElementById('detCv'), dctx = detCv.getContext('2d');
+const detCv = document.getElementById('detCv');
+let dctx = detCv.getContext('2d');
 const SENS_COLOR = ['#e0555f', '#5fce7a', '#4fa8e8'];   // 0=radar 1=camera 2=lidar
-const dsx = v => (v - EXT.x0) / (EXT.x1 - EXT.x0) * detCv.width;
-const dsy = v => detCv.height - (v - EXT.y0) / (EXT.y1 - EXT.y0) * detCv.height;
+// Logical (CSS-pixel) size of detCv, refreshed by fitCanvas() every draw —
+// dsx/dsy must use this, not detCv.width/height, which fitCanvas repoints at
+// the device-pixel backing store (see fitCanvas for why).
+let detW = 860, detH = 260;
+const dsx = v => (v - EXT.x0) / (EXT.x1 - EXT.x0) * detW;
+const dsy = v => detH - (v - EXT.y0) / (EXT.y1 - EXT.y0) * detH;
 
 // How many recorded frames back to trail — ~1s of history at the 12 Hz
 // render/record rate (see main.cpp kRenderPeriod), long enough to read a
@@ -503,19 +532,21 @@ const dsy = v => detCv.height - (v - EXT.y0) / (EXT.y1 - EXT.y0) * detCv.height;
 const DET_TRAIL = 12;
 
 function drawDetections(f) {
-  dctx.fillStyle = '#0e1015'; dctx.fillRect(0, 0, detCv.width, detCv.height);
+  const fit = fitCanvas(detCv);
+  dctx = fit.ctx; detW = fit.w; detH = fit.h;
+  dctx.fillStyle = '#0e1015'; dctx.fillRect(0, 0, detW, detH);
 
   // Coordinate grid, in metres (world frame) — same axes sense::to_detection() works in.
   dctx.font = '9px ui-monospace,monospace'; dctx.fillStyle = 'rgba(223,229,239,.45)';
   dctx.strokeStyle = 'rgba(255,255,255,.08)'; dctx.lineWidth = 1;
   for (let gx = -40; gx <= 40; gx += 20) {
     const x = dsx(gx);
-    dctx.beginPath(); dctx.moveTo(x, 0); dctx.lineTo(x, detCv.height); dctx.stroke();
-    dctx.textAlign = 'left'; dctx.fillText(gx + 'm', x + 2, detCv.height - 4);
+    dctx.beginPath(); dctx.moveTo(x, 0); dctx.lineTo(x, detH); dctx.stroke();
+    dctx.textAlign = 'left'; dctx.fillText(gx + 'm', x + 2, detH - 4);
   }
   for (let gy = -30; gy <= 30; gy += 15) {
     const y = dsy(gy);
-    dctx.beginPath(); dctx.moveTo(0, y); dctx.lineTo(detCv.width, y); dctx.stroke();
+    dctx.beginPath(); dctx.moveTo(0, y); dctx.lineTo(detW, y); dctx.stroke();
     dctx.fillText(gy + 'm', 2, y - 2);
   }
 
@@ -751,8 +782,7 @@ function createChart(canvasId, legendId, lines) {
     label.querySelector('input').addEventListener('change', e => { state[l.key] = e.target.checked; draw(); });
   });
   function draw() {
-    const c = cv.getContext('2d');
-    const W = cv.width, H = cv.height;
+    const { ctx: c, w: W, h: H } = fitCanvas(cv);
     const padL = 34, padR = 6, padT = 6, padB = 14;
     const plotW = W - padL - padR, plotH = H - padT - padB;
     c.fillStyle = '#0e1015'; c.fillRect(0, 0, W, H);
@@ -961,6 +991,14 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+// Card widths (and therefore the ideal canvas backing-store size) change on
+// resize — re-fit on the next frame so charts stay crisp instead of stale.
+let resizeT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { if (frames.length) render(); }, 120);
+});
 
 document.getElementById('file').addEventListener('change', e => {
   const fr = new FileReader();
