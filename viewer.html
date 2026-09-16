@@ -66,6 +66,17 @@
              cursor:pointer; user-select:none; }
   .chkline input { accent-color:var(--accent); cursor:pointer; margin:0; }
   .chkline input:not(:checked) ~ span.sw { opacity:.25; }
+  .chkrange { color:var(--dim); opacity:.75; }
+
+  /* ---- run summary: aggregate stat grid, computed once per loaded file ----- */
+  .statGrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
+  .stat { background:var(--bg); border:1px solid var(--line); border-radius:5px; padding:8px 10px; }
+  .stat .lbl { color:var(--dim); font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+  .stat .val { font-size:18px; font-weight:700; margin-top:3px; }
+  .stat .val.good { color:#78daa8; }
+  .stat .val.warn { color:#f6d24a; }
+  .stat .val.bad  { color:#ff6b6b; }
+  .stat .sub { color:var(--dim); font-size:11px; margin-top:1px; }
 </style>
 </head>
 <body>
@@ -104,8 +115,8 @@
       <h2>how to record</h2>
       <div class="hint">ADAS_RECORD=run.jsonl ./adas_sim --seconds=60 --seed=42</div>
       <div class="hint" style="margin-top:8px">Then drop run.jsonl above. Yellow rings are what
-      fusion believes; red cars are the truth. Everything below the track — the terminal readout
-      and five module sections — is computed once from the whole file, not live.</div>
+      fusion believes; red cars are the truth. Everything below the track — the terminal readout,
+      the run summary, and six module sections — is computed once from the whole file, not live.</div>
     </div>
   </aside>
 </div>
@@ -114,8 +125,22 @@
 
 <div class="analysis">
   <div class="intro">module analysis — one section per stack component, mirroring
-    include/adas/{sensors,tracker,planner,controller}.hpp. Untick a legend entry to hide that
-    line; the thin vertical line in every chart tracks the current scrub position.</div>
+    include/adas/{sensors,tracker,planner,controller}.hpp, plus two cross-cutting sections
+    (thread timing, safety outcome) that only make sense read across the whole stack. Untick a
+    legend entry to hide that line; the thin vertical line in every chart tracks the current
+    scrub position.</div>
+
+  <!-- ============================================================== SUMMARY -->
+  <section class="module" id="sec-summary">
+    <div class="modhead">
+      <span class="modicon">📋</span><h1>Run Summary</h1>
+      <span class="moddesc">aggregated once over every frame in the file — the numbers you'd
+      paste into a run comparison</span>
+    </div>
+    <div class="card">
+      <div class="statGrid" id="summaryGrid"><div class="hint">load a run.jsonl to populate</div></div>
+    </div>
+  </section>
 
   <!-- ============================================================ SENSORS -->
   <section class="module" id="sec-sensors">
@@ -125,7 +150,7 @@
     </div>
 
     <div class="card">
-      <h2>raw detections (current frame)</h2>
+      <h2>raw detections — current frame + ~1s trail</h2>
       <canvas id="detCv" width="860" height="260"></canvas>
       <div class="chartLegend">
         <span><span class="sw" style="background:#e0555f"></span>radar</span>
@@ -133,9 +158,13 @@
         <span><span class="sw" style="background:#4fa8e8"></span>lidar</span>
         <span><span class="sw" style="background:#f6d24a"></span>fused track (confirmed)</span>
       </div>
-      <div class="hint" style="margin-top:6px">Each dot is one raw measurement this fusion cycle,
-      already converted to world frame — before any tracking (sense::to_detection). Compare the
-      scatter to the yellow rings: that gap is what the Kalman filter in tracker.hpp is smoothing over.</div>
+      <div class="hint" style="margin-top:6px">World-frame coordinates in metres (grid lines every
+      20m × 15m) — <code>sense::to_detection()</code> output, before any tracking. Bright dots are
+      this cycle; faint dots are the last ~1s, fading out, so you can see which way things are
+      moving. Raw detections have no ID from cycle to cycle, so their trail is a fading cloud, not
+      a line. Fused tracks (yellow rings) <em>do</em> have a stable ID, so theirs draws as a real
+      connected trail. The gap between a track's ring and the raw dots around it is what the
+      Kalman filter in tracker.hpp is smoothing over.</div>
     </div>
 
     <div class="chartsRow">
@@ -195,24 +224,51 @@
       <span class="moddesc">tracker.hpp — per-object Kalman filters, data association, confirm/prune lifecycle</span>
     </div>
 
+    <div class="intro" style="margin:-4px 0 12px">Four small charts, each answering one question
+      about the tracker, in order: how many objects does it believe in, is it confident about
+      them, is that confidence trustworthy, and how many sensors agree.</div>
+
     <div class="chartsRow">
       <div class="card">
-        <h2>track confidence</h2>
+        <h2>1. tracks &amp; confidence</h2>
         <canvas id="chConf" width="420" height="150"></canvas>
         <div class="chartLegend" id="chConfLegend"></div>
-        <div class="hint" style="margin-top:6px">σ is the Kalman position uncertainty
-        (Track::pos_sigma) — it should trend down as a track accumulates hits. "confirmed tracks"
-        only counts tracks that passed is_confirmed(); tentative tracks never reach this file at
-        all (see docs/tracker-explainer.html § Pipeline).</div>
+        <div class="hint" style="margin-top:6px">How many objects are currently confirmed, and how
+        sure the filter is about their position (σ, in metres — smaller is more confident). σ
+        should fall as a track accumulates hits.</div>
       </div>
       <div class="card">
-        <h2>sensor agreement (confirmed tracks, per cycle)</h2>
+        <h2>2. hits vs. misses</h2>
+        <canvas id="chHitsMiss" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chHitsMissLegend"></div>
+        <div class="hint" style="margin-top:6px">Average, per confirmed track, how many cycles it
+        was actually detected in (hits) vs. cycles it was predicted-but-missed (misses). Misses
+        rising toward hits means a track is about to be pruned.</div>
+      </div>
+      <div class="card">
+        <h2>3. is that confidence trustworthy?</h2>
+        <canvas id="chAcc" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chAccLegend"></div>
+        <div class="hint" style="margin-top:6px">σ (from chart 1) is what the filter <em>believes</em>
+        about its own error. "actual error" is the real distance from each track to the nearest
+        ground-truth obstacle — something the filter never sees. The two lines should track each
+        other; σ sitting well below actual error means the filter is overconfident.</div>
+      </div>
+      <div class="card">
+        <h2>4. sensor agreement</h2>
         <canvas id="chAgree" width="420" height="150"></canvas>
         <div class="chartLegend" id="chAgreeLegend"></div>
-        <div class="hint" style="margin-top:6px">Counts confirmed tracks by how many <em>distinct</em>
-        sensor kinds (popcount of sensor_mask) ever hit them. Since confirm_sensors=2 by default,
-        the "1 sensor kind" line should stay near zero among confirmed tracks — seeing it rise is
-        a sign the confirmation gate isn't doing its job.</div>
+        <div class="hint" style="margin-top:6px">Confirmed tracks, grouped by how many different
+        sensor <em>types</em> (radar/camera/lidar) have ever hit them. Confirmation requires 2, so
+        "1 sensor kind" should stay near zero — if it rises, the confirmation gate isn't working.</div>
+      </div>
+      <div class="card">
+        <h2>cumulative (this run)</h2>
+        <div class="row"><span>unique track IDs issued</span><b id="statUniqIds">—</b></div>
+        <div class="row"><span>tracking RMSE vs. truth</span><b id="statRMSE">—</b></div>
+        <div class="hint" style="margin-top:8px">IDs issued much higher than the average track
+        count (chart 1) means tracks keep dying and respawning instead of staying alive — the
+        planner sees that as an object briefly vanishing.</div>
       </div>
     </div>
   </section>
@@ -270,12 +326,89 @@
         chart drops.</div>
       </div>
       <div class="card">
+        <h2>ride comfort</h2>
+        <canvas id="chComfort" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chComfortLegend"></div>
+        <div class="hint" style="margin-top:6px">Jerk is d(accel)/dt — the thing passengers
+        actually feel, not raw accel. Lateral accel is ego speed × yaw rate (from consecutive
+        ego.yaw), a proxy for cornering g-force. Sharp spikes in either usually line up with a
+        planner lane-change (the offset chart, Planner section) landing on a controller that has
+        to react in one 20 ms control tick instead of smoothing across several.</div>
+      </div>
+      <div class="card">
         <h2>cumulative (this run)</h2>
         <div class="row"><span>control ticks</span><b id="statCtrl">—</b></div>
         <div class="row"><span>sim ticks</span><b id="statSim">—</b></div>
+        <div class="row"><span>lane changes</span><b id="statLaneChanges">—</b></div>
         <div class="hint" style="margin-top:8px">Control runs at 50 Hz, the World kinematic
         integration at 100 Hz (kControlPeriod / kSimPeriod in main.cpp) — sim ticks should always
-        run roughly 2× control ticks.</div>
+        run roughly 2× control ticks. "Lane changes" counts how many times the planner's chosen
+        offset (of the 5 candidate lanes) differs from the previous plan cycle.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================== TIMING/HEALTH -->
+  <section class="module" id="sec-timing">
+    <div class="modhead">
+      <span class="modicon">🧵</span><h1>Thread Timing</h1>
+      <span class="moddesc">cross-cutting — conc::Stats counters differentiated over time, checking
+      main.cpp's seven std::jthreads actually hit their target rates</span>
+    </div>
+
+    <div class="chartsRow">
+      <div class="card">
+        <h2>measured rate vs. nominal (Hz)</h2>
+        <canvas id="chTiming" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chTimingLegend"></div>
+        <div class="hint" style="margin-top:6px">Each line is d(counter)/dt between consecutive
+        recorded frames (render runs at 12 Hz, so this is a ~83 ms window average, not
+        instantaneous — expect noise, not a flat line). Dashed reference: radar 20, camera 15,
+        lidar 10, control 50, sim 100 Hz. A line sagging persistently below its nominal value —
+        not just noisy around it — means that thread is being starved: CPU contention, a lock held
+        too long, or a body that overruns its own period (run_at_rate can't catch up once behind).</div>
+      </div>
+      <div class="card">
+        <h2>cumulative (this run)</h2>
+        <div class="row"><span>radar / camera / lidar Hz avg</span><b id="statHzSensor">—</b></div>
+        <div class="row"><span>fusion / plan / ctrl / sim Hz avg</span><b id="statHzLoop">—</b></div>
+        <div class="hint" style="margin-top:8px">Average rate = final counter value ÷ run duration
+        — a coarser but driftless cross-check on the per-cycle chart. If this disagrees a lot with
+        what the chart trends toward, the run likely had a slow start (threads staggered by the
+        std::latch start_gate) or ended mid-cycle.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== SAFETY/OUTCOME -->
+  <section class="module" id="sec-safety">
+    <div class="modhead">
+      <span class="modicon">🛡️</span><h1>Safety &amp; Outcome</h1>
+      <span class="moddesc">cross-cutting — ego vs. ground-truth obstacles (obs[]), independent of
+      what the tracker believed; this is "how close did we actually come," not "what did fusion see"</span>
+    </div>
+
+    <div class="chartsRow">
+      <div class="card">
+        <h2>closing distance &amp; time-to-collision, nearest obstacle</h2>
+        <canvas id="chSafety" width="420" height="150"></canvas>
+        <div class="chartLegend" id="chSafetyLegend"></div>
+        <div class="hint" style="margin-top:6px">Distance is centre-to-centre to the nearest obs[],
+        minus its radius — ground truth, not the planner's min_clearance (which only sees confirmed
+        tracks and is what the planner actually reacted to). TTC is distance ÷ closing rate,
+        clamped to 15s and blank while opening. Compare the two: the planner's clearance chart
+        (Planner section) reacting to something this chart doesn't yet show as urgent is worth
+        investigating.</div>
+      </div>
+      <div class="card">
+        <h2>cumulative (this run)</h2>
+        <div class="row"><span>result</span><b id="statResult">—</b></div>
+        <div class="row"><span>closest approach</span><b id="statClosest">—</b></div>
+        <div class="row"><span>time below 2 m clearance</span><b id="statNearMiss">—</b></div>
+        <div class="hint" style="margin-top:8px">"Time below 2 m" sums the duration between
+        consecutive frames wherever the true nearest-obstacle distance was under 2 m — a coarse
+        near-miss budget for comparing planner tunings across runs, independent of whether either
+        run happened to crash.</div>
       </div>
     </div>
   </section>
@@ -364,13 +497,67 @@ const SENS_COLOR = ['#e0555f', '#5fce7a', '#4fa8e8'];   // 0=radar 1=camera 2=li
 const dsx = v => (v - EXT.x0) / (EXT.x1 - EXT.x0) * detCv.width;
 const dsy = v => detCv.height - (v - EXT.y0) / (EXT.y1 - EXT.y0) * detCv.height;
 
+// How many recorded frames back to trail — ~1s of history at the 12 Hz
+// render/record rate (see main.cpp kRenderPeriod), long enough to read a
+// direction of travel without turning the plot into a smear.
+const DET_TRAIL = 12;
+
 function drawDetections(f) {
   dctx.fillStyle = '#0e1015'; dctx.fillRect(0, 0, detCv.width, detCv.height);
+
+  // Coordinate grid, in metres (world frame) — same axes sense::to_detection() works in.
+  dctx.font = '9px ui-monospace,monospace'; dctx.fillStyle = 'rgba(223,229,239,.45)';
+  dctx.strokeStyle = 'rgba(255,255,255,.08)'; dctx.lineWidth = 1;
+  for (let gx = -40; gx <= 40; gx += 20) {
+    const x = dsx(gx);
+    dctx.beginPath(); dctx.moveTo(x, 0); dctx.lineTo(x, detCv.height); dctx.stroke();
+    dctx.textAlign = 'left'; dctx.fillText(gx + 'm', x + 2, detCv.height - 4);
+  }
+  for (let gy = -30; gy <= 30; gy += 15) {
+    const y = dsy(gy);
+    dctx.beginPath(); dctx.moveTo(0, y); dctx.lineTo(detCv.width, y); dctx.stroke();
+    dctx.fillText(gy + 'm', 2, y - 2);
+  }
+
+  // Faint trail of recent raw detections — no stable ID between sensor
+  // cycles, so this is a fading cloud (density/spread), not connected dots.
+  const start = Math.max(0, i - DET_TRAIL + 1);
+  for (let k = start; k < i; k++) {
+    const fr = frames[k];
+    if (!fr) continue;
+    dctx.globalAlpha = Math.max(0, 1 - (i - k) / DET_TRAIL) * 0.3;
+    (fr.det || []).forEach(([kind, x, y]) => {
+      dctx.beginPath(); dctx.arc(dsx(x), dsy(y), 1.6, 0, 2*Math.PI);
+      dctx.fillStyle = SENS_COLOR[kind] || '#999'; dctx.fill();
+    });
+  }
+  dctx.globalAlpha = 1;
+
+  // Fused tracks *do* have a stable id (fuse::Track::id), so their recent
+  // history draws as an actual connected trail — this is the one place in
+  // the chart where "how is this object moving" is a real line, not a smear.
+  const trailById = new Map();
+  for (let k = start; k <= i; k++) {
+    const fr = frames[k];
+    if (!fr) continue;
+    (fr.trk || []).forEach(([id, x, y]) => {
+      if (!trailById.has(id)) trailById.set(id, []);
+      trailById.get(id).push([x, y]);
+    });
+  }
+  trailById.forEach(pts => {
+    if (pts.length < 2) return;
+    dctx.beginPath();
+    pts.forEach(([x, y], idx) => idx ? dctx.lineTo(dsx(x), dsy(y)) : dctx.moveTo(dsx(x), dsy(y)));
+    dctx.strokeStyle = 'rgba(246,210,74,.45)'; dctx.lineWidth = 1.2; dctx.stroke();
+  });
+
+  // Current frame, full opacity, on top of the trails.
   (f.det || []).forEach(([kind, x, y]) => {
     dctx.beginPath(); dctx.arc(dsx(x), dsy(y), 2.6, 0, 2*Math.PI);
     dctx.fillStyle = SENS_COLOR[kind] || '#999'; dctx.fill();
   });
-  (f.trk || []).forEach(([, x, y]) => {                  // fused tracks, for comparison
+  (f.trk || []).forEach(([, x, y]) => {
     dctx.beginPath(); dctx.arc(dsx(x), dsy(y), 6, 0, 2*Math.PI);
     dctx.strokeStyle = 'rgba(246,210,74,.85)'; dctx.lineWidth = 1.5; dctx.stroke();
   });
@@ -381,14 +568,21 @@ function drawDetections(f) {
 }
 
 // ---- module charts: time-series built once per loaded run ----------------
-let series = null;
+let series = null, summary = null;
 const popcount3 = m => ((m&1)?1:0) + ((m&2)?1:0) + ((m&4)?1:0);
+const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+const dist = (x1,y1,x2,y2) => Math.hypot(x1-x2, y1-y2);
 
 function buildSeries() {
   const t=[], radar=[], camera=[], lidar=[], totalDet=[],
         sigma=[], confCount=[], hitsAvg=[], missesAvg=[], mask1=[], mask2=[], mask3=[],
-        cost=[], minclr=[], tspeed=[], off=[], speed=[], cmdAccel=[], cmdSteer=[];
-  frames.forEach(f => {
+        cost=[], minclr=[], tspeed=[], off=[], speed=[], cmdAccel=[], cmdSteer=[],
+        trkErr=[], jerk=[], latAccel=[], nearestDist=[], ttc=[],
+        hzRadar=[], hzCamera=[], hzLidar=[], hzFusion=[], hzPlans=[], hzCtrl=[], hzSim=[];
+  const uniqIds = new Set();
+  let laneChanges = 0, prevOff = null;
+
+  frames.forEach((f, k) => {
     t.push(f.t);
 
     let r=0, c=0, l=0;
@@ -401,90 +595,241 @@ function buildSeries() {
     hitsAvg.push(trk.length ? trk.reduce((a, tr) => a + tr[6], 0) / trk.length : 0);
     missesAvg.push(trk.length ? trk.reduce((a, tr) => a + tr[7], 0) / trk.length : 0);
     let m1=0, m2=0, m3=0;
-    trk.forEach(tr => { const p = popcount3(tr[8]); if (p===1) m1++; else if (p===2) m2++; else if (p>=3) m3++; });
+    trk.forEach(tr => { const p = popcount3(tr[8]); if (p===1) m1++; else if (p===2) m2++; else if (p>=3) m3++; uniqIds.add(tr[0]); });
     mask1.push(m1); mask2.push(m2); mask3.push(m3);
+
+    // Tracking accuracy: nearest-neighbour distance from each confirmed track
+    // to a real ground-truth obstacle, averaged over the tracks this cycle.
+    const obs = f.obs || [];
+    if (trk.length && obs.length) {
+      const errs = trk.map(([,x,y]) => Math.min(...obs.map(([,ox,oy]) => dist(x,y,ox,oy))));
+      trkErr.push(errs.reduce((a,b)=>a+b,0) / errs.length);
+    } else trkErr.push(0);
 
     cost.push(f.cost || 0);
     minclr.push(f.minclr != null ? Math.min(f.minclr, 10) : 0);
     tspeed.push(f.tspeed || 0);
-    off.push(f.off || 0);
+    const curOff = f.off || 0;
+    off.push(curOff);
+    if (prevOff !== null && Math.abs(curOff - prevOff) > 0.3) laneChanges++;
+    prevOff = curOff;
     speed.push(f.speed || 0);
     cmdAccel.push(f.cmd ? f.cmd[0] : 0);
     cmdSteer.push(f.cmd ? f.cmd[1] : 0);
+
+    // Ground-truth safety: nearest obstacle, regardless of whether it's tracked.
+    let nd = Infinity;
+    if (f.ego && obs.length) obs.forEach(([,ox,oy,,,orad]) => { nd = Math.min(nd, dist(f.ego[0],f.ego[1],ox,oy) - (orad||0)); });
+    nearestDist.push(Number.isFinite(nd) ? Math.max(nd, 0) : null);
+
+    // Derivative quantities need a previous frame with a real dt.
+    const pf = frames[k-1];
+    const dt = pf ? (f.t - pf.t) : 0;
+    if (pf && dt > 1e-3) {
+      jerk.push(((f.cmd ? f.cmd[0] : 0) - (pf.cmd ? pf.cmd[0] : 0)) / dt);
+      const yawRate = f.ego && pf.ego ? angleDiff(f.ego[2], pf.ego[2]) / dt : 0;
+      latAccel.push((f.speed || 0) * yawRate);
+      const pndRaw = nearestDist[k-1];
+      if (pndRaw != null && nd !== Infinity) {
+        const closingRate = (pndRaw - nd) / dt;
+        ttc.push(closingRate > 0.3 ? Math.min(nd / closingRate, 15) : null);
+      } else ttc.push(null);
+      const dstat = (key) => (pf.stats && f.stats) ? Math.max((f.stats[key]||0) - (pf.stats[key]||0), 0) / dt : 0;
+      hzRadar.push(dstat('radar')); hzCamera.push(dstat('camera')); hzLidar.push(dstat('lidar'));
+      hzFusion.push(dstat('fusion')); hzPlans.push(dstat('plans')); hzCtrl.push(dstat('ctrl')); hzSim.push(dstat('sim'));
+    } else {
+      jerk.push(0); latAccel.push(0); ttc.push(null);
+      hzRadar.push(0); hzCamera.push(0); hzLidar.push(0); hzFusion.push(0); hzPlans.push(0); hzCtrl.push(0); hzSim.push(0);
+    }
   });
+
   series = {t, radar, camera, lidar, totalDet, sigma, confCount, hitsAvg, missesAvg,
-            mask1, mask2, mask3, cost, minclr, tspeed, off, speed, cmdAccel, cmdSteer};
+            mask1, mask2, mask3, cost, minclr, tspeed, off, speed, cmdAccel, cmdSteer,
+            trkErr, jerk, latAccel, nearestDist, ttc,
+            hzRadar, hzCamera, hzLidar, hzFusion, hzPlans, hzCtrl, hzSim};
+  buildSummary(uniqIds, laneChanges);
+}
+
+// ---- run summary: single pass over the whole file, rendered once ---------
+function fmt(v, d=1) { return Number.isFinite(v) ? v.toFixed(d) : '—'; }
+function statCard(lbl, val, cls='', sub='') {
+  return `<div class="stat"><div class="lbl">${lbl}</div><div class="val ${cls}">${val}</div>` +
+         (sub ? `<div class="sub">${sub}</div>` : '') + `</div>`;
+}
+function buildSummary(uniqIds, laneChanges) {
+  const last = frames[frames.length - 1];
+  const dur = last.t || 1;
+  const avg = a => a.length ? a.reduce((x,y)=>x+y,0) / a.length : 0;
+
+  // Ground truth, not the planner's self-reported min_clearance — see Safety module.
+  const finiteClr = series.nearestDist.filter(v => v != null);
+  const minClr = finiteClr.length ? Math.min(...finiteClr) : null;
+
+  let nearMissTime = 0;
+  for (let k = 1; k < frames.length; k++) {
+    const d0 = series.nearestDist[k-1], d1 = series.nearestDist[k];
+    if (d0 != null && d1 != null && Math.min(d0,d1) < 2.0) nearMissTime += frames[k].t - frames[k-1].t;
+  }
+
+  const rmseSamples = series.trkErr.filter((v,k) => series.confCount[k] > 0);
+  const rmse = rmseSamples.length ? Math.sqrt(avg(rmseSamples.map(v=>v*v))) : null;
+
+  const hzAvg = key => (last.stats && last.stats[key] != null) ? last.stats[key] / dur : null;
+  summary = {
+    duration: dur, laps: last.laps, crashed: last.crashed, crashReason: last.crash_reason,
+    topSpeed: Math.max(...series.speed), avgSpeed: avg(series.speed),
+    minClr, nearMissTime, avgTracks: avg(series.confCount), rmse,
+    uniqIds: uniqIds.size, laneChanges,
+    hz: { radar: hzAvg('radar'), camera: hzAvg('camera'), lidar: hzAvg('lidar'),
+          fusion: hzAvg('fusion'), plans: hzAvg('plans'), ctrl: hzAvg('ctrl'), sim: hzAvg('sim') },
+  };
+
+  const g = document.getElementById('summaryGrid');
+  g.innerHTML =
+    statCard('result', summary.crashed ? 'CRASHED' : 'survived', summary.crashed ? 'bad' : 'good',
+              summary.crashed ? escapeHtml(summary.crashReason) : `${summary.duration.toFixed(1)} s, ${summary.laps} laps`) +
+    statCard('top / avg speed', `${fmt(summary.topSpeed)} / ${fmt(summary.avgSpeed)}`, '', 'm/s') +
+    statCard('closest approach', summary.minClr != null ? fmt(summary.minClr,2)+' m' : '—',
+              summary.minClr != null && summary.minClr < 1 ? 'bad' : (summary.minClr != null && summary.minClr < 2 ? 'warn' : 'good')) +
+    statCard('time below 2m clearance', fmt(summary.nearMissTime,1)+' s',
+              summary.nearMissTime > 3 ? 'warn' : '') +
+    statCard('avg confirmed tracks', fmt(summary.avgTracks,2)) +
+    statCard('tracking RMSE vs. truth', summary.rmse != null ? fmt(summary.rmse,2)+' m' : '—',
+              summary.rmse != null && summary.rmse > 2 ? 'warn' : '') +
+    statCard('unique track IDs', summary.uniqIds) +
+    statCard('lane changes', summary.laneChanges) +
+    statCard('sensor Hz (radar/cam/lidar)',
+              `${fmt(summary.hz.radar)}/${fmt(summary.hz.camera)}/${fmt(summary.hz.lidar)}`, '', 'nominal 20/15/10') +
+    statCard('loop Hz (fuse/plan/ctrl/sim)',
+              `${fmt(summary.hz.fusion)}/${fmt(summary.hz.plans)}/${fmt(summary.hz.ctrl)}/${fmt(summary.hz.sim)}`, '', 'nominal —/10/50/100');
+
+  // Mirror the headline numbers into the per-module "cumulative" cards too,
+  // so a reader who jumped straight to e.g. Tracker doesn't have to scroll up.
+  setTxt('statUniqIds', summary.uniqIds);
+  setTxt('statRMSE', summary.rmse != null ? fmt(summary.rmse,2) + ' m' : '—');
+  setTxt('statLaneChanges', summary.laneChanges);
+  setTxt('statHzSensor', `${fmt(summary.hz.radar)} / ${fmt(summary.hz.camera)} / ${fmt(summary.hz.lidar)}`);
+  setTxt('statHzLoop', `${fmt(summary.hz.fusion)} / ${fmt(summary.hz.plans)} / ${fmt(summary.hz.ctrl)} / ${fmt(summary.hz.sim)}`);
+  setTxt('statResult', summary.crashed ? `crashed — ${summary.crashReason}` : `survived, ${summary.laps} laps`);
+  setTxt('statClosest', summary.minClr != null ? fmt(summary.minClr,2) + ' m' : '—');
+  setTxt('statNearMiss', fmt(summary.nearMissTime,1) + ' s');
 }
 
 // Tiny dependency-free multi-line chart with a tick/untick legend. Each line
 // auto-scales to its own min/max (or an explicit {min,max}) independently of
-// whatever else is toggled, so hiding a line never rescales the others. A
-// thin vertical line marks the current scrub frame; redrawn every render().
+// whatever else is toggled, so hiding a line never rescales the others — the
+// y-axis drawn on the canvas belongs to whichever *visible* line is first in
+// the `lines` array; every other line's range is printed as text next to its
+// legend entry instead (e.g. "(0.4–2.1)"), since one shared axis can't show
+// two different units at once. The x-axis is always wall-clock sim time, in
+// seconds, taken from the recording itself (series.t) — never frame index.
+// A thin vertical line marks the current scrub frame; redrawn every render().
+function fmtAxis(v) {
+  if (!Number.isFinite(v)) return '—';
+  const av = Math.abs(v);
+  if (av === 0) return '0';
+  if (av >= 100) return v.toFixed(0);
+  if (av >= 10) return v.toFixed(1);
+  return v.toFixed(2);
+}
 const charts = [];
 function createChart(canvasId, legendId, lines) {
   const cv = document.getElementById(canvasId);
   const legend = document.getElementById(legendId);
   const state = {};
+  const rangeEls = {};
   legend.innerHTML = '';
   lines.forEach(l => {
     state[l.key] = l.default !== false;
     const label = document.createElement('label');
     label.className = 'chkline';
     label.innerHTML = `<input type="checkbox"${state[l.key] ? ' checked' : ''}>` +
-                       `<span class="sw" style="background:${l.color}"></span>${l.label}`;
+                       `<span class="sw" style="background:${l.color}"></span>${l.label}` +
+                       `<span class="chkrange"></span>`;
     legend.appendChild(label);
+    rangeEls[l.key] = label.querySelector('.chkrange');
     label.querySelector('input').addEventListener('change', e => { state[l.key] = e.target.checked; draw(); });
   });
   function draw() {
     const c = cv.getContext('2d');
-    const W = cv.width, H = cv.height, pad = 6;
+    const W = cv.width, H = cv.height;
+    const padL = 34, padR = 6, padT = 6, padB = 14;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
     c.fillStyle = '#0e1015'; c.fillRect(0, 0, W, H);
     if (!series || !series.t.length) return;
     const n = series.t.length;
-    const xAt = k => pad + k / Math.max(n - 1, 1) * (W - pad*2);
+    const xAt = k => padL + k / Math.max(n - 1, 1) * plotW;
+    const yAt = (v, lo, span) => padT + plotH - ((v - lo) / span) * plotH;
+
+    // axis frame
+    c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(padL + .5, padT); c.lineTo(padL + .5, padT + plotH); c.lineTo(padL + plotW, padT + plotH + .5); c.stroke();
+
+    // x-axis: sim time in seconds, three ticks (start / mid / end)
+    c.font = '9px ui-monospace,monospace'; c.fillStyle = 'rgba(223,229,239,.5)';
+    [0, Math.floor((n - 1) / 2), n - 1].forEach(k => {
+      const x = xAt(k);
+      c.strokeStyle = 'rgba(255,255,255,.08)'; c.beginPath(); c.moveTo(x, padT); c.lineTo(x, padT + plotH); c.stroke();
+      c.textAlign = k === 0 ? 'left' : (k === n - 1 ? 'right' : 'center');
+      c.fillText(series.t[k].toFixed(1) + 's', x, H - 3);
+    });
+
+    let axisLine = null;   // first *visible* line — owns the y-axis
     lines.forEach(l => {
-      if (!state[l.key]) return;
       const data = l.getData();
       const lo = l.min != null ? l.min : Math.min(...data);
       const hi = l.max != null ? l.max : Math.max(...data);
+      if (rangeEls[l.key]) rangeEls[l.key].textContent = ` (${fmtAxis(lo)}–${fmtAxis(hi)})`;
+      if (!state[l.key]) return;
       const span = (hi - lo) || 1e-6;
+      if (!axisLine) axisLine = l;
+      if (axisLine === l) {
+        c.fillStyle = 'rgba(223,229,239,.55)'; c.textAlign = 'right';
+        [0, 0.5, 1].forEach(fr => c.fillText(fmtAxis(lo + fr * span), padL - 4, padT + plotH - fr * plotH + 3));
+      }
       c.beginPath();
       data.forEach((v, k) => {
-        const x = xAt(k), y = H - pad - ((v - lo) / span) * (H - pad*2);
+        const x = xAt(k), y = yAt(v, lo, span);
         k ? c.lineTo(x, y) : c.moveTo(x, y);
       });
       c.strokeStyle = l.color; c.lineWidth = 1.4; c.stroke();
     });
     const mx = xAt(Math.min(i, n - 1));
     c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 1;
-    c.beginPath(); c.moveTo(mx, pad); c.lineTo(mx, H - pad); c.stroke();
+    c.beginPath(); c.moveTo(mx, padT); c.lineTo(mx, padT + plotH); c.stroke();
   }
   charts.push({draw});
   return {draw};
 }
 
 createChart('chDet', 'chDetLegend', [
-  {key:'radar',  label:'radar / cycle',  color:'#e0555f', getData:()=>series.radar},
-  {key:'camera', label:'camera / cycle', color:'#5fce7a', getData:()=>series.camera},
-  {key:'lidar',  label:'lidar / cycle',  color:'#4fa8e8', getData:()=>series.lidar},
+  {key:'radar',  label:'radar (count/cycle)',  color:'#e0555f', getData:()=>series.radar},
+  {key:'camera', label:'camera (count/cycle)', color:'#5fce7a', getData:()=>series.camera},
+  {key:'lidar',  label:'lidar (count/cycle)',  color:'#4fa8e8', getData:()=>series.lidar},
 ]);
 createChart('chFusion', 'chFusionLegend', [
-  {key:'total', label:'total detections / cycle', color:'#e8c34a', getData:()=>series.totalDet},
-  {key:'conf',  label:'confirmed tracks',         color:'#40d6ec', getData:()=>series.confCount},
+  {key:'total', label:'total detections (count/cycle)', color:'#e8c34a', getData:()=>series.totalDet},
+  {key:'conf',  label:'confirmed tracks (count)',        color:'#40d6ec', getData:()=>series.confCount},
 ]);
 createChart('chConf', 'chConfLegend', [
-  {key:'sigma',   label:'avg σ (m)',       color:'#f6d24a', getData:()=>series.sigma},
-  {key:'conf',    label:'confirmed tracks', color:'#40d6ec', getData:()=>series.confCount},
-  {key:'hits',    label:'avg hits',         color:'#78daa8', getData:()=>series.hitsAvg},
-  {key:'misses',  label:'avg misses',       color:'#e0555f', getData:()=>series.missesAvg, default:false},
+  {key:'conf',    label:'confirmed tracks (count)', color:'#40d6ec', getData:()=>series.confCount},
+  {key:'sigma',   label:'avg σ (m)',                color:'#f6d24a', getData:()=>series.sigma},
+]);
+createChart('chHitsMiss', 'chHitsMissLegend', [
+  {key:'hits',    label:'avg hits (count)',   color:'#78daa8', getData:()=>series.hitsAvg},
+  {key:'misses',  label:'avg misses (count)', color:'#e0555f', getData:()=>series.missesAvg},
 ]);
 createChart('chAgree', 'chAgreeLegend', [
-  {key:'m1', label:'1 sensor kind',  color:'#e0555f', getData:()=>series.mask1},
-  {key:'m2', label:'2 sensor kinds', color:'#ecd65c', getData:()=>series.mask2},
-  {key:'m3', label:'3 sensor kinds', color:'#78daa8', getData:()=>series.mask3},
+  {key:'m1', label:'1 sensor kind (count)',  color:'#e0555f', getData:()=>series.mask1},
+  {key:'m2', label:'2 sensor kinds (count)', color:'#ecd65c', getData:()=>series.mask2},
+  {key:'m3', label:'3 sensor kinds (count)', color:'#78daa8', getData:()=>series.mask3},
+]);
+createChart('chAcc', 'chAccLegend', [
+  {key:'err',   label:'actual error vs. truth (m)', color:'#ff6b6b', getData:()=>series.trkErr},
+  {key:'sigma', label:'reported σ (m)',              color:'#f6d24a', getData:()=>series.sigma},
 ]);
 createChart('chPlan', 'chPlanLegend', [
-  {key:'cost',   label:'cost',                   color:'#74f68c', getData:()=>series.cost},
+  {key:'cost',   label:'cost (unitless score)',  color:'#74f68c', getData:()=>series.cost},
   {key:'minclr', label:'min clearance (m)',       color:'#be76e8', getData:()=>series.minclr},
   {key:'tspeed', label:'target speed (m/s)',      color:'#ee923e', getData:()=>series.tspeed},
   {key:'off',    label:'lateral offset (m)',      color:'#4fa8e8', getData:()=>series.off, default:false},
@@ -496,6 +841,23 @@ createChart('chSpeed', 'chSpeedLegend', [
 createChart('chCmd', 'chCmdLegend', [
   {key:'accel', label:'accel (m/s²)', color:'#74f68c', getData:()=>series.cmdAccel},
   {key:'steer', label:'steer (rad)',  color:'#be76e8', getData:()=>series.cmdSteer},
+]);
+createChart('chComfort', 'chComfortLegend', [
+  {key:'jerk', label:'jerk (m/s³)',       color:'#f6d24a', getData:()=>series.jerk},
+  {key:'lat',  label:'lateral accel (m/s²)', color:'#4fa8e8', getData:()=>series.latAccel},
+]);
+createChart('chTiming', 'chTimingLegend', [
+  {key:'radar',   label:'radar Hz (nom 20)',   color:'#e0555f', getData:()=>series.hzRadar},
+  {key:'camera',  label:'camera Hz (nom 15)',  color:'#5fce7a', getData:()=>series.hzCamera},
+  {key:'lidar',   label:'lidar Hz (nom 10)',   color:'#4fa8e8', getData:()=>series.hzLidar},
+  {key:'fusion',  label:'fusion Hz',           color:'#f6d24a', getData:()=>series.hzFusion},
+  {key:'plans',   label:'plan Hz (nom 10)',    color:'#c9a13b', getData:()=>series.hzPlans, default:false},
+  {key:'ctrl',    label:'ctrl Hz (nom 50)',    color:'#be76e8', getData:()=>series.hzCtrl, default:false},
+  {key:'sim',     label:'sim Hz (nom 100)',    color:'#40d6ec', getData:()=>series.hzSim, default:false},
+]);
+createChart('chSafety', 'chSafetyLegend', [
+  {key:'dist', label:'nearest obstacle dist (m)', color:'#40d6ec', getData:()=>series.nearestDist.map(v=>v==null?20:Math.min(v,20)), min:0},
+  {key:'ttc',  label:'time-to-collision (s, capped 15)', color:'#ff6b6b', getData:()=>series.ttc.map(v=>v==null?15:v), min:0, max:15},
 ]);
 
 // ---- terminal readout: a text replica of render.hpp's header()/footer() --
@@ -621,7 +983,8 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ') { e.preventDefault(); document.getElementById('play').click(); }
 });
 drawTrack();
-[detCv, 'chDet', 'chFusion', 'chConf', 'chAgree', 'chPlan', 'chSpeed', 'chCmd'].forEach(el => {
+[detCv, 'chDet', 'chFusion', 'chConf', 'chHitsMiss', 'chAgree', 'chAcc', 'chPlan', 'chSpeed', 'chCmd',
+ 'chComfort', 'chTiming', 'chSafety'].forEach(el => {
   const c = typeof el === 'string' ? document.getElementById(el) : el;
   const cx = c.getContext('2d'); cx.fillStyle = '#0e1015'; cx.fillRect(0, 0, c.width, c.height);
 });
